@@ -33,6 +33,9 @@ jobs:
         with:
           swift-version: ${{ matrix.swift-version }}
 
+      - name: Clean build directory
+        run: rm -rf .build
+
       - name: Build for macOS
         run: swift build -v
 
@@ -59,11 +62,11 @@ jobs:
         with:
           swift-version: ${{ matrix.swift-version }}
 
-      - name: Build for iOS
-        run: swift build -v --triple arm64-apple-ios13.0
+      - name: Clean build directory
+        run: rm -rf .build
 
-      - name: Test for iOS
-        run: swift test -v --triple arm64-apple-ios13.0
+      - name: Build and Test for iOS
+        run: xcodebuild -scheme genetic-solver -destination 'platform=iOS Simulator,name=iPhone 15,OS=latest' build test
 
   build-tvos:
     runs-on: macos-14
@@ -85,11 +88,11 @@ jobs:
         with:
           swift-version: ${{ matrix.swift-version }}
 
-      - name: Build for tvOS
-        run: swift build -v --triple arm64-apple-tvos13.0
+      - name: Clean build directory
+        run: rm -rf .build
 
-      - name: Test for tvOS
-        run: swift test -v --triple arm64-apple-tvos13.0
+      - name: Build and Test for tvOS
+        run: xcodebuild -scheme genetic-solver -destination 'platform=tvOS Simulator,name=Apple TV 4K (3rd generation),OS=latest' build test
 
   build-visionos:
     runs-on: macos-14
@@ -111,8 +114,8 @@ jobs:
         with:
           swift-version: ${{ matrix.swift-version }}
 
-      - name: Build for visionOS
-        run: swift build -v --triple arm64-apple-visionos1.0
+      - name: Clean build directory
+        run: rm -rf .build
 
-      - name: Test for visionOS
-        run: swift test -v --triple arm64-apple-visionos1.0
+      - name: Build and Test for visionOS
+        run: xcodebuild -scheme genetic-solver -destination 'platform=visionOS Simulator,name=Apple Vision Pro,OS=latest' build test
