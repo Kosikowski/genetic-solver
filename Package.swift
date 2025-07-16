@@ -5,6 +5,14 @@ import PackageDescription
 
 let package = Package(
     name: "genetic-solver",
+    platforms: [
+        .macOS(.v10_15),
+        .iOS(.v13_0),
+        .tvOS(.v13_0),
+        .visionOS(.v1_0),
+        .linux,
+        .windows
+    ],
     products: [
         // Products define the executables and libraries a package produces, making them visible to other packages.
         .library(

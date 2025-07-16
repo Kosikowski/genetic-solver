@@ -1,0 +1,129 @@
+# .github/workflows/ci.yml
+# Comprehensive CI for all supported platforms
+
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  # macOS and Apple Platforms
+  build-macos:
+    runs-on: macos-15
+    name: macOS
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - name: Build and Test
+        run: |
+          swift build -v
+          swift test -v
+
+  build-ios:
+    runs-on: macos-15
+    name: iOS
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - name: Build and Test
+        run: |
+          swift build -v --triple arm64-apple-ios13.0
+          swift test -v --triple arm64-apple-ios13.0
+
+  build-tvos:
+    runs-on: macos-15
+    name: tvOS
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - name: Build and Test
+        run: |
+          swift build -v --triple arm64-apple-tvos13.0
+          swift test -v --triple arm64-apple-tvos13.0
+
+  build-visionos:
+    runs-on: macos-15
+    name: visionOS
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - name: Build and Test
+        run: |
+          swift build -v --triple arm64-apple-visionos1.0
+          swift test -v --triple arm64-apple-visionos1.0
+
+  # Linux
+  build-linux:
+    runs-on: ubuntu-latest
+    name: Linux
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Swift
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: "6.1"
+      - name: Build and Test
+        run: |
+          swift build -v
+          swift test -v
+
+  build-linux-release:
+    runs-on: ubuntu-latest
+    name: Linux Release
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Swift
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: "6.1"
+      - name: Build and Test Release
+        run: |
+          swift build -c release -v
+          swift test -c release -v
+
+  # Windows
+  build-windows:
+    runs-on: windows-latest
+    name: Windows
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Swift
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: "6.1"
+      - name: Build and Test
+        run: |
+          swift build -v
+          swift test -v
+
+  build-windows-release:
+    runs-on: windows-latest
+    name: Windows Release
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Swift
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: "6.1"
+      - name: Build and Test Release
+        run: |
+          swift build -c release -v
+          swift test -c release -v 
