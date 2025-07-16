@@ -1,0 +1,57 @@
+# .github/workflows/swiftformat.yml
+# SwiftFormat CI for code formatting consistency
+
+name: SwiftFormat
+
+on:
+  pull_request:
+    branches: [ "main" ]
+  push:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  swiftformat:
+    runs-on: macos-14
+    name: SwiftFormat Check
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Required for SwiftFormat to work properly
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '16'
+
+      - name: Install Swift
+        uses: SwiftyLab/setup-swift@v1
+        with:
+          swift-version: "6.1.2"
+
+      - name: Clean build directory
+        run: rm -rf .build
+
+      - name: Install SwiftFormat
+        run: |
+          brew install swiftformat
+
+      - name: Check SwiftFormat
+        run: |
+          swiftformat --lint --config .swiftformat Sources/ Tests/
+
+      - name: Check if formatting is needed
+        id: check-formatting
+        run: |
+          if swiftformat --lint --config .swiftformat Sources/ Tests/ | grep -q "would have been formatted"; then
+            echo "needs-formatting=true" >> $GITHUB_OUTPUT
+            echo "❌ Code formatting issues found"
+            swiftformat --lint --config .swiftformat Sources/ Tests/
+            exit 1
+          else
+            echo "needs-formatting=false" >> $GITHUB_OUTPUT
+            echo "✅ Code formatting is correct"
+          fi

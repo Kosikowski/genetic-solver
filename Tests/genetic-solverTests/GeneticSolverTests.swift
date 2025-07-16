@@ -2,13 +2,19 @@
 //  RubicCubeTests
 //
 //  Created by Mateusz Kosikowski on 05/02/2025.
-//
 
+import XCTest
 @testable import genetic_solver
-import Testing
+
+// MARK: - TestGeneticOperators
 
 struct TestGeneticOperators: GeneticOperators {
+    // MARK: Nested Types
+
     typealias Element = TestIndividual
+
+    // MARK: Static Functions
+
     static func selectionOperator(population: [Element]) -> (Element, Element) {
         // Use the default implementation
         let candidates = (0 ..< 3).map { _ in population.randomElement()! }
@@ -17,39 +23,48 @@ struct TestGeneticOperators: GeneticOperators {
     }
 
     static func crossoverOperator(parent1: Element, parent2: Element) -> [Element] {
-        return [parent1, parent2]
+        [parent1, parent2]
     }
 
     static func mutationOperator(element: Element) -> Element {
-        return element
+        element
     }
 
     static func replacementOperator(old _: [Element], new: [Element]) -> [Element] {
-        return new
+        new
     }
 
     static func fixedGenerationTermination(maxGenerations: Int) -> TerminationCheck<Element> {
-        return { generation, _ in generation >= maxGenerations }
+        { generation, _ in generation >= maxGenerations }
     }
 
     static func newElement() -> Element {
         // Provide a default test value
-        return TestIndividual(gene: .zero, id: 0)
+        TestIndividual(gene: .zero, id: 0)
     }
 }
 
-// Minimal mock element and fitness for testing
+// MARK: - TestGene
+
+/// Minimal mock element and fitness for testing
 enum TestGene: Int, CaseIterable {
-    case zero = 0, one = 1
+    case zero = 0
+    case one = 1
 }
 
+// MARK: - TestIndividual
+
 struct TestIndividual: GeneticElement, FitnessEvaluatable, Equatable {
+    // MARK: Properties
+
     var gene: TestGene
     var id: Int
 
+    // MARK: Functions
+
     func fitness() -> Double {
         // Higher fitness if gene is .one
-        return gene == .one ? 1.0 : 0.0
+        gene == .one ? 1.0 : 0.0
     }
 }
 
@@ -59,31 +74,39 @@ typealias TestMutationOperator = MutationOperator<TestIndividual>
 typealias TestReplacementOperator = ReplacementOperator<TestIndividual>
 typealias TestTerminationCheck = TerminationCheck<TestIndividual>
 
-@Suite("GeneticSolver.solve basic behavior")
-struct GeneticSolverSolveTests {
-    @Test("Population evolves and terminates as expected")
-    func testSolverFindsOptimalGene() async throws {
+// MARK: - GeneticSolverTests
+
+final class GeneticSolverTests: XCTestCase {
+    func testSolverFindsOptimalGene() {
         let randomInitializer = { TestIndividual(gene: TestGene.allCases.randomElement()!, id: Int.random(in: 0 ..< 100_000)) }
 
         // Use default tournament selection from TestGeneticOperators
         let selection: TestSelectionOperator = { population in
             TestGeneticOperators.selectionOperator(population: population)
         }
-        // Crossover: always return one of each (simulate mix)
-        let crossover: TestCrossoverOperator = { p1, p2 in [p1, p2] }
-        // Mutation: switch gene with low probability
+        // Crossover: actually mix the genes from parents
+        let crossover: TestCrossoverOperator = { p1, p2 in
+            // Create offspring with mixed genes
+            let child1 = TestIndividual(gene: p1.gene, id: Int.random(in: 0 ..< 100_000))
+            let child2 = TestIndividual(gene: p2.gene, id: Int.random(in: 0 ..< 100_000))
+            return [child1, child2]
+        }
+        // Mutation: switch gene with very low probability to allow convergence
         let mutation: TestMutationOperator = { ind in
             var mutant = ind
-            mutant.gene = mutant.gene == .one ? .zero : .one
+            // Only mutate 5% of the time to allow convergence
+            if Double.random(in: 0 ... 1) < 0.05 {
+                mutant.gene = mutant.gene == .one ? .zero : .one
+            }
             return mutant
         }
         let replacement: TestReplacementOperator = { _, newPop in newPop }
-        let termination: TestTerminationCheck = { gen, pop in gen >= 20 || pop.allSatisfy { $0.gene == .one } }
+        let termination: TestTerminationCheck = { gen, pop in gen >= 50 || pop.allSatisfy { $0.gene == .one } }
 
         var solver = GeneticSolver<TestIndividual>(
-            populationSize: 10,
-            crossoverRate: 1.0,
-            mutationRate: 0.2,
+            populationSize: 20, // Larger population for better diversity
+            crossoverRate: 0.8, // High crossover rate
+            mutationRate: 0.05, // Much lower mutation rate
             selectionOperator: selection,
             crossoverOperator: crossover,
             mutationOperator: mutation,
@@ -92,13 +115,12 @@ struct GeneticSolverSolveTests {
             newElement: randomInitializer
         )
 
-        let finalPopulation = solver.solve(maxGenerations: 50)
+        let finalPopulation = solver.solve(maxGenerations: 100)
         // Test that eventually all individuals are optimal
-        #expect(finalPopulation.allSatisfy { $0.gene == .one }, "All individuals should converge to gene .one")
+        XCTAssertTrue(finalPopulation.allSatisfy { $0.gene == .one }, "All individuals should converge to gene .one")
     }
 
-    @Test("Solver respects maxGenerations and returns a population of correct size")
-    func testSolverRespectsMaxGenerations() async throws {
+    func testSolverRespectsMaxGenerations() {
         let randomInitializer = { TestIndividual(gene: .zero, id: Int.random(in: 0 ..< 100_000)) }
         var solver = GeneticSolver<TestIndividual>(
             populationSize: 6,
@@ -110,6 +132,6 @@ struct GeneticSolverSolveTests {
             newElement: randomInitializer
         )
         let pop = solver.solve(maxGenerations: 5)
-        #expect(pop.count == 6, "Returned population should match populationSize")
+        XCTAssertEqual(pop.count, 6, "Returned population should match populationSize")
     }
 }

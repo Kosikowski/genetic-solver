@@ -55,7 +55,7 @@ First, create a type that represents an individual in your genetic algorithm:
 ```swift
 struct MyIndividual: GeneticElement, FitnessEvaluatable {
     var genes: [Int]
-    
+
     func fitness() -> Double {
         // Calculate fitness based on your problem
         return Double(genes.reduce(0, +))
@@ -105,14 +105,14 @@ let mutation: MutationOperator<MyIndividual> = { individual in
 ```swift
 struct MyGeneticOperators: GeneticOperators {
     typealias Element = MyIndividual
-    
+
     static func selectionOperator(population: [Element]) -> (Element, Element) {
         // Use default tournament selection
         let candidates = (0..<3).map { _ in population.randomElement()! }
         let best = candidates.max { $0.fitness() < $1.fitness() }!
         return (best, best)
     }
-    
+
     static func crossoverOperator(parent1: Element, parent2: Element) -> [Element] {
         let point = Int.random(in: 0..<parent1.genes.count)
         let child1 = MyIndividual(
@@ -123,22 +123,22 @@ struct MyGeneticOperators: GeneticOperators {
         )
         return [child1, child2]
     }
-    
+
     static func mutationOperator(element: Element) -> Element {
         var mutant = element
         let geneIndex = Int.random(in: 0..<mutant.genes.count)
         mutant.genes[geneIndex] = Int.random(in: 0...100)
         return mutant
     }
-    
+
     static func replacementOperator(old: [Element], new: [Element]) -> [Element] {
         return new // Generational replacement
     }
-    
+
     static func fixedGenerationTermination(maxGenerations: Int) -> TerminationCheck<Element> {
         return { generation, _ in generation >= maxGenerations }
     }
-    
+
     static func newElement() -> Element {
         return MyIndividual(genes: (0..<10).map { _ in Int.random(in: 0...100) })
     }
@@ -216,10 +216,10 @@ print("Population size: \(solver.currentPopulation.count)")
 // Stop when fitness improvement stalls
 let adaptiveTermination: TerminationCheck<MyIndividual> = { generation, population in
     if generation < 10 { return false }
-    
+
     let currentBest = population.map { $0.fitness() }.max()!
     let previousBest = // ... get from history
-    
+
     return abs(currentBest - previousBest) < 0.001
 }
 ```
@@ -242,11 +242,11 @@ let elitismReplacement: ReplacementOperator<MyIndividual> = { old, new in
 ```swift
 let rouletteSelection: SelectionOperator<MyIndividual> = { population in
     let totalFitness = population.reduce(0) { $0 + $1.fitness() }
-    
+
     func selectOne() -> MyIndividual {
         let target = Double.random(in: 0..<totalFitness)
         var cumulative = 0.0
-        
+
         for individual in population {
             cumulative += individual.fitness()
             if cumulative >= target {
@@ -255,7 +255,7 @@ let rouletteSelection: SelectionOperator<MyIndividual> = { population in
         }
         return population.last!
     }
-    
+
     return (selectOne(), selectOne())
 }
 ```
@@ -300,7 +300,7 @@ struct City {
 struct TSPIndividual: GeneticElement, FitnessEvaluatable {
     var route: [Int]
     let cities: [City]
-    
+
     func fitness() -> Double {
         var totalDistance = 0.0
         for i in 0..<route.count {
@@ -326,20 +326,20 @@ struct KnapsackIndividual: GeneticElement, FitnessEvaluatable {
     var selection: [Bool]
     let items: [Item]
     let maxWeight: Int
-    
+
     func fitness() -> Double {
         let totalWeight = zip(selection, items).reduce(0) { sum, pair in
             sum + (pair.0 ? pair.1.weight : 0)
         }
-        
+
         if totalWeight > maxWeight {
             return 0.0 // Invalid solution
         }
-        
+
         let totalValue = zip(selection, items).reduce(0) { sum, pair in
             sum + (pair.0 ? pair.1.value : 0)
         }
-        
+
         return Double(totalValue)
     }
 }
@@ -349,6 +349,45 @@ struct KnapsackIndividual: GeneticElement, FitnessEvaluatable {
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
+### Code Formatting
+
+This project uses SwiftFormat to maintain consistent code style.
+
+#### Local Development
+
+1. Install SwiftFormat:
+   ```bash
+   brew install swiftformat
+   ```
+
+2. Format code locally:
+   ```bash
+   ./scripts/format.sh
+   ```
+
+3. Check formatting without making changes:
+   ```bash
+   ./scripts/format.sh --check
+   ```
+
+#### Pre-commit Hooks
+
+Install pre-commit hooks to automatically format code before commits:
+
+```bash
+# Install pre-commit
+pip install pre-commit
+
+# Install the git hook scripts
+pre-commit install
+```
+
+#### CI/CD
+
+- **Format Check**: Every PR is automatically checked for proper formatting
+- **Auto-Format**: Weekly automated formatting PRs are created if needed
+- **Pre-commit**: Local hooks ensure code is formatted before commits
+
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details. 
+This project is licensed under the MIT License - see the LICENSE file for details.

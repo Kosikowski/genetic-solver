@@ -1,0 +1,76 @@
+# .github/workflows/format.yml
+# Auto-format code and create PRs for formatting fixes
+
+name: Auto Format
+
+on:
+  workflow_dispatch:  # Manual trigger
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly on Sundays
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  format:
+    runs-on: macos-14
+    name: Auto Format Code
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '16'
+
+      - name: Install Swift
+        uses: SwiftyLab/setup-swift@v1
+        with:
+          swift-version: "6.1.2"
+
+      - name: Clean build directory
+        run: rm -rf .build
+
+      - name: Install SwiftFormat
+        run: |
+          brew install swiftformat
+
+      - name: Check current formatting
+        id: check-formatting
+        run: |
+          if swiftformat --lint --config .swiftformat Sources/ Tests/ | grep -q "would have been formatted"; then
+            echo "needs-formatting=true" >> $GITHUB_OUTPUT
+          else
+            echo "needs-formatting=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Format code
+        if: steps.check-formatting.outputs.needs-formatting == 'true'
+        run: |
+          swiftformat --config .swiftformat Sources/ Tests/
+
+      - name: Create Pull Request
+        if: steps.check-formatting.outputs.needs-formatting == 'true'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "style: auto-format code with SwiftFormat"
+          title: "style: auto-format code with SwiftFormat"
+          body: |
+            This PR automatically formats the code using SwiftFormat.
+
+            Changes made:
+            - Applied SwiftFormat rules from `.swiftformat` configuration
+            - Formatted all Swift files in `Sources/` and `Tests/` directories
+
+            This is an automated formatting PR to maintain code style consistency.
+          branch: auto-format
+          delete-branch: true
+          labels: |
+            automated
+            formatting

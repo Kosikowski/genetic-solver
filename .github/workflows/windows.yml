@@ -1,0 +1,72 @@
+# .github/workflows/windows.yml
+# CI for Swift packages on Windows.
+
+name: Windows CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows:
+    runs-on: windows-2022
+    name: Build and Test (Windows)
+    strategy:
+      matrix:
+        swift-version: [5.9, 6.1.2]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Swift
+        uses: SwiftyLab/setup-swift@v1
+        with:
+          swift-version: ${{ matrix.swift-version }}
+
+      - name: Verify Swift installation
+        run: |
+          swift --version
+          swift build --help
+        shell: pwsh
+
+      - name: Build
+        run: swift build -v
+        shell: pwsh
+
+      - name: Run tests
+        run: swift test -v
+        shell: pwsh
+
+  build-windows-release:
+    runs-on: windows-2022
+    name: Build and Test (Windows Release)
+    strategy:
+      matrix:
+        swift-version: [5.9, 6.1.2]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Swift
+        uses: SwiftyLab/setup-swift@v1
+        with:
+          swift-version: ${{ matrix.swift-version }}
+
+      - name: Verify Swift installation
+        run: |
+          swift --version
+          swift build --help
+        shell: pwsh
+
+      - name: Build Release
+        run: swift build -c release -v
+        shell: pwsh
+
+      - name: Test Release
+        run: swift test -c release -v
+        shell: pwsh

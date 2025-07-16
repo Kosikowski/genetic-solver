@@ -1,5 +1,5 @@
 # .github/workflows/swift.yml
-# CI for Swift packages on macOS 15 + Xcode 16.4 (latest-stable).
+# Swift-specific CI workflow
 
 name: Swift CI
 
@@ -10,29 +10,112 @@ on:
     branches: [ "main" ]
 
 permissions:
-  contents: read      # least-privilege for CI
+  contents: read
 
 jobs:
-  build:
-    runs-on: macos-15      # macOS 15 “Sequoia” runner (GA Apr 2025)
+  build-macos:
+    runs-on: macos-14
+    name: Build and Test (macOS)
+    strategy:
+      matrix:
+        swift-version: [5.9, 6.1.2]
 
     steps:
-      # 1 – Check out sources
       - uses: actions/checkout@v4
 
-      # 2 – Select newest *stable* Xcode pre-installed on this image
-      - name: Select Xcode (latest-stable)
+      - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: latest-stable   # resolves to Xcode 16.4 today
+          xcode-version: '16'
 
-      # 3 – (Optional) pin a Swift toolchain version
-      # - uses: swift-actions/setup-swift@v2
-      #   with:
-      #     swift-version: "6.1"
+      - name: Install Swift ${{ matrix.swift-version }}
+        uses: SwiftyLab/setup-swift@v1
+        with:
+          swift-version: ${{ matrix.swift-version }}
 
-      # 4 – Build and test
-      - name: Build
+      - name: Clean build directory
+        run: rm -rf .build
+
+      - name: Build for macOS
         run: swift build -v
-      - name: Run tests
+
+      - name: Test for macOS
         run: swift test -v
+
+  build-ios:
+    runs-on: macos-14
+    name: Build and Test (iOS)
+    strategy:
+      matrix:
+        swift-version: [5.9]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '16'
+
+      - name: Install Swift ${{ matrix.swift-version }}
+        uses: SwiftyLab/setup-swift@v1
+        with:
+          swift-version: ${{ matrix.swift-version }}
+
+      - name: Clean build directory
+        run: rm -rf .build
+
+      - name: Build and Test for iOS
+        run: xcodebuild -scheme genetic-solver -destination 'platform=iOS Simulator,name=iPhone 15,OS=latest' build test
+
+  build-tvos:
+    runs-on: macos-14
+    name: Build and Test (tvOS)
+    strategy:
+      matrix:
+        swift-version: [5.9]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '16'
+
+      - name: Install Swift ${{ matrix.swift-version }}
+        uses: SwiftyLab/setup-swift@v1
+        with:
+          swift-version: ${{ matrix.swift-version }}
+
+      - name: Clean build directory
+        run: rm -rf .build
+
+      - name: Build and Test for tvOS
+        run: xcodebuild -scheme genetic-solver -destination 'platform=tvOS Simulator,name=Apple TV 4K (3rd generation),OS=latest' build test
+
+  build-visionos:
+    runs-on: macos-14
+    name: Build and Test (visionOS)
+    strategy:
+      matrix:
+        swift-version: [5.9]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '16'
+
+      - name: Install Swift ${{ matrix.swift-version }}
+        uses: SwiftyLab/setup-swift@v1
+        with:
+          swift-version: ${{ matrix.swift-version }}
+
+      - name: Clean build directory
+        run: rm -rf .build
+
+      - name: Build and Test for visionOS
+        run: xcodebuild -scheme genetic-solver -destination 'platform=visionOS Simulator,name=Apple Vision Pro,OS=latest' build test
