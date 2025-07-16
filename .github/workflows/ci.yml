@@ -17,11 +17,15 @@ permissions:
 jobs:
   # macOS and Apple Platforms
   build-macos:
-    runs-on: macos-14
+    runs-on: ${{ matrix.runner }}
     name: macOS (Swift ${{ matrix.swift-version }})
     strategy:
       matrix:
-        swift-version: [5.9, 6.1.2]
+        include:
+          - swift-version: 5.9
+            runner: macos-14
+          - swift-version: 6.1.2
+            runner: macos-latest
     steps:
       - uses: actions/checkout@v4
       - name: Setup Xcode
@@ -44,11 +48,17 @@ jobs:
           swift test -v
 
   build-ios:
-    runs-on: macos-14
+    runs-on: ${{ matrix.runner }}
     name: iOS (Swift ${{ matrix.swift-version }})
     strategy:
       matrix:
-        swift-version: [5.9]
+        include:
+          - swift-version: 5.9
+            runner: macos-14
+            use_xcodebuild: true
+          - swift-version: 6.1.2
+            runner: macos-latest
+            use_xcodebuild: false
     steps:
       - uses: actions/checkout@v4
       - name: Setup Xcode
@@ -62,15 +72,27 @@ jobs:
       - name: Clean build directory
         run: rm -rf .build
       - name: Build and Test
+        if: matrix.use_xcodebuild == true
         run: |
           xcodebuild -scheme genetic-solver -destination 'platform=iOS Simulator,name=iPhone 15,OS=latest' build test
+      - name: Build and Test (SwiftPM)
+        if: matrix.use_xcodebuild == false
+        run: |
+          swift build -v
+          swift test -v
 
   build-tvos:
-    runs-on: macos-14
+    runs-on: ${{ matrix.runner }}
     name: tvOS (Swift ${{ matrix.swift-version }})
     strategy:
       matrix:
-        swift-version: [5.9]
+        include:
+          - swift-version: 5.9
+            runner: macos-14
+            use_xcodebuild: true
+          - swift-version: 6.1.2
+            runner: macos-latest
+            use_xcodebuild: false
     steps:
       - uses: actions/checkout@v4
       - name: Setup Xcode
@@ -84,15 +106,27 @@ jobs:
       - name: Clean build directory
         run: rm -rf .build
       - name: Build and Test
+        if: matrix.use_xcodebuild == true
         run: |
           xcodebuild -scheme genetic-solver -destination 'platform=tvOS Simulator,name=Apple TV 4K (3rd generation),OS=latest' build test
+      - name: Build and Test (SwiftPM)
+        if: matrix.use_xcodebuild == false
+        run: |
+          swift build -v
+          swift test -v
 
   build-visionos:
-    runs-on: macos-14
+    runs-on: ${{ matrix.runner }}
     name: visionOS (Swift ${{ matrix.swift-version }})
     strategy:
       matrix:
-        swift-version: [5.9]
+        include:
+          - swift-version: 5.9
+            runner: macos-14
+            use_xcodebuild: true
+          - swift-version: 6.1.2
+            runner: macos-latest
+            use_xcodebuild: false
     steps:
       - uses: actions/checkout@v4
       - name: Setup Xcode
@@ -106,8 +140,14 @@ jobs:
       - name: Clean build directory
         run: rm -rf .build
       - name: Build and Test
+        if: matrix.use_xcodebuild == true
         run: |
           xcodebuild -scheme genetic-solver -destination 'platform=visionOS Simulator,name=Apple Vision Pro,OS=latest' build test
+      - name: Build and Test (SwiftPM)
+        if: matrix.use_xcodebuild == false
+        run: |
+          swift build -v
+          swift test -v
 
   # Linux
   build-linux:
