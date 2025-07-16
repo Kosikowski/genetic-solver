@@ -22,8 +22,10 @@ jobs:
         swift-version: [5.9, 6.1.2]
     steps:
       - uses: actions/checkout@v4
-      - name: Select Xcode
-        run: sudo xcode-select -switch /Applications/Xcode_16.3.app
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '16'
       - name: Install Swift ${{ matrix.swift-version }}
         uses: SwiftyLab/setup-swift@v1
         with:
@@ -45,8 +47,10 @@ jobs:
         swift-version: [5.9, 6.1.2]
     steps:
       - uses: actions/checkout@v4
-      - name: Select Xcode
-        run: sudo xcode-select -switch /Applications/Xcode_16.3.app
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '16'
       - name: Install Swift ${{ matrix.swift-version }}
         uses: SwiftyLab/setup-swift@v1
         with:
@@ -64,8 +68,10 @@ jobs:
         swift-version: [5.9, 6.1.2]
     steps:
       - uses: actions/checkout@v4
-      - name: Select Xcode
-        run: sudo xcode-select -switch /Applications/Xcode_16.3.app
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '16'
       - name: Install Swift ${{ matrix.swift-version }}
         uses: SwiftyLab/setup-swift@v1
         with:
@@ -83,8 +89,10 @@ jobs:
         swift-version: [5.9, 6.1.2]
     steps:
       - uses: actions/checkout@v4
-      - name: Select Xcode
-        run: sudo xcode-select -switch /Applications/Xcode_16.3.app
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '16'
       - name: Install Swift ${{ matrix.swift-version }}
         uses: SwiftyLab/setup-swift@v1
         with:
