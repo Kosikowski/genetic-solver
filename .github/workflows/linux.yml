@@ -16,14 +16,20 @@ jobs:
   build-linux:
     runs-on: ubuntu-latest
     name: Build and Test (Linux)
+    strategy:
+      matrix:
+        swift-version: [5.9, 6.1.2]
 
     steps:
       - uses: actions/checkout@v4
 
       - name: Install Swift
-        uses: swift-actions/setup-swift@v2
+        uses: SwiftyLab/setup-swift@v1
         with:
-          swift-version: "6.1"
+          swift-version: ${{ matrix.swift-version }}
+
+      - name: Show Swift version
+        run: swift --version
 
       - name: Build
         run: swift build -v
@@ -34,17 +40,23 @@ jobs:
   build-linux-release:
     runs-on: ubuntu-latest
     name: Build and Test (Linux Release)
+    strategy:
+      matrix:
+        swift-version: [5.9, 6.1.2]
 
     steps:
       - uses: actions/checkout@v4
 
       - name: Install Swift
-        uses: swift-actions/setup-swift@v2
+        uses: SwiftyLab/setup-swift@v1
         with:
-          swift-version: "6.1"
+          swift-version: ${{ matrix.swift-version }}
+
+      - name: Show Swift version
+        run: swift --version
 
       - name: Build Release
         run: swift build -c release -v
 
       - name: Test Release
-        run: swift test -c release -v 
+        run: swift test -c release -v

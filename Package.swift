@@ -7,11 +7,9 @@ let package = Package(
     name: "genetic-solver",
     platforms: [
         .macOS(.v10_15),
-        .iOS(.v13_0),
-        .tvOS(.v13_0),
-        .visionOS(.v1_0),
-        .linux,
-        .windows
+        .iOS(.v13),
+        .tvOS(.v13),
+        .visionOS(.v1),
     ],
     products: [
         // Products define the executables and libraries a package produces, making them visible to other packages.
