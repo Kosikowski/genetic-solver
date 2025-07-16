@@ -6,9 +6,9 @@ import PackageDescription
 let package = Package(
     name: "genetic-solver",
     platforms: [
-        .macOS(.v10_15),
-        .iOS(.v13),
-        .tvOS(.v13),
+        .macOS(.v13),
+        .iOS(.v17),
+        .tvOS(.v17),
         .visionOS(.v1),
     ],
     products: [
