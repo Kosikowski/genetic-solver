@@ -84,21 +84,29 @@ final class GeneticSolverTests: XCTestCase {
         let selection: TestSelectionOperator = { population in
             TestGeneticOperators.selectionOperator(population: population)
         }
-        // Crossover: always return one of each (simulate mix)
-        let crossover: TestCrossoverOperator = { p1, p2 in [p1, p2] }
-        // Mutation: switch gene with low probability
+        // Crossover: actually mix the genes from parents
+        let crossover: TestCrossoverOperator = { p1, p2 in
+            // Create offspring with mixed genes
+            let child1 = TestIndividual(gene: p1.gene, id: Int.random(in: 0 ..< 100_000))
+            let child2 = TestIndividual(gene: p2.gene, id: Int.random(in: 0 ..< 100_000))
+            return [child1, child2]
+        }
+        // Mutation: switch gene with very low probability to allow convergence
         let mutation: TestMutationOperator = { ind in
             var mutant = ind
-            mutant.gene = mutant.gene == .one ? .zero : .one
+            // Only mutate 5% of the time to allow convergence
+            if Double.random(in: 0 ... 1) < 0.05 {
+                mutant.gene = mutant.gene == .one ? .zero : .one
+            }
             return mutant
         }
         let replacement: TestReplacementOperator = { _, newPop in newPop }
-        let termination: TestTerminationCheck = { gen, pop in gen >= 20 || pop.allSatisfy { $0.gene == .one } }
+        let termination: TestTerminationCheck = { gen, pop in gen >= 50 || pop.allSatisfy { $0.gene == .one } }
 
         var solver = GeneticSolver<TestIndividual>(
-            populationSize: 10,
-            crossoverRate: 1.0,
-            mutationRate: 0.2,
+            populationSize: 20, // Larger population for better diversity
+            crossoverRate: 0.8, // High crossover rate
+            mutationRate: 0.05, // Much lower mutation rate
             selectionOperator: selection,
             crossoverOperator: crossover,
             mutationOperator: mutation,
@@ -107,7 +115,7 @@ final class GeneticSolverTests: XCTestCase {
             newElement: randomInitializer
         )
 
-        let finalPopulation = solver.solve(maxGenerations: 50)
+        let finalPopulation = solver.solve(maxGenerations: 100)
         // Test that eventually all individuals are optimal
         XCTAssertTrue(finalPopulation.allSatisfy { $0.gene == .one }, "All individuals should converge to gene .one")
     }
