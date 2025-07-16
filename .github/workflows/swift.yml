@@ -14,11 +14,15 @@ permissions:
 
 jobs:
   build-macos:
-    runs-on: macos-14
+    runs-on: ${{ matrix.runner }}
     name: Build and Test (macOS)
     strategy:
       matrix:
-        swift-version: [5.9, 6.1.2]
+        include:
+          - swift-version: 5.9
+            runner: macos-14
+          - swift-version: 6.1.2
+            runner: macos-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -43,11 +47,15 @@ jobs:
         run: swift test -v
 
   build-ios:
-    runs-on: macos-14
+    runs-on: ${{ matrix.runner }}
     name: Build and Test (iOS)
     strategy:
       matrix:
-        swift-version: [5.9]
+        include:
+          - swift-version: 5.9
+            runner: macos-14
+          - swift-version: 6.1.2
+            runner: macos-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -69,11 +77,15 @@ jobs:
         run: xcodebuild -scheme genetic-solver -destination 'platform=iOS Simulator,name=iPhone 15,OS=latest' build test
 
   build-tvos:
-    runs-on: macos-14
+    runs-on: ${{ matrix.runner }}
     name: Build and Test (tvOS)
     strategy:
       matrix:
-        swift-version: [5.9]
+        include:
+          - swift-version: 5.9
+            runner: macos-14
+          - swift-version: 6.1.2
+            runner: macos-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -95,11 +107,15 @@ jobs:
         run: xcodebuild -scheme genetic-solver -destination 'platform=tvOS Simulator,name=Apple TV 4K (3rd generation),OS=latest' build test
 
   build-visionos:
-    runs-on: macos-14
+    runs-on: ${{ matrix.runner }}
     name: Build and Test (visionOS)
     strategy:
       matrix:
-        swift-version: [5.9]
+        include:
+          - swift-version: 5.9
+            runner: macos-14
+          - swift-version: 6.1.2
+            runner: macos-latest
 
     steps:
       - uses: actions/checkout@v4
