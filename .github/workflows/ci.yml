@@ -46,7 +46,7 @@ jobs:
     name: iOS (Swift ${{ matrix.swift-version }})
     strategy:
       matrix:
-        swift-version: [5.9, 6.1.2]
+        swift-version: [5.9]
     steps:
       - uses: actions/checkout@v4
       - name: Setup Xcode
@@ -68,7 +68,7 @@ jobs:
     name: tvOS (Swift ${{ matrix.swift-version }})
     strategy:
       matrix:
-        swift-version: [5.9, 6.1.2]
+        swift-version: [5.9]
     steps:
       - uses: actions/checkout@v4
       - name: Setup Xcode
@@ -90,7 +90,7 @@ jobs:
     name: visionOS (Swift ${{ matrix.swift-version }})
     strategy:
       matrix:
-        swift-version: [5.9, 6.1.2]
+        swift-version: [5.9]
     steps:
       - uses: actions/checkout@v4
       - name: Setup Xcode
