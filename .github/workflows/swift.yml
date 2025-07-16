@@ -65,10 +65,14 @@ jobs:
           swift-version: ${{ matrix.swift-version }}
 
       - name: Build for iOS
-        run: swift build -v --triple arm64-apple-ios13.0
+        run: |
+          SDK=$(xcrun --sdk iphoneos --show-sdk-path)
+          swift build -v --triple arm64-apple-ios13.0 -sdk $SDK
 
       - name: Test for iOS
-        run: swift test -v --triple arm64-apple-ios13.0
+        run: |
+          SDK=$(xcrun --sdk iphoneos --show-sdk-path)
+          swift test -v --triple arm64-apple-ios13.0 -sdk $SDK
 
   build-tvos:
     runs-on: macos-14
@@ -89,10 +93,14 @@ jobs:
           swift-version: ${{ matrix.swift-version }}
 
       - name: Build for tvOS
-        run: swift build -v --triple arm64-apple-tvos13.0
+        run: |
+          SDK=$(xcrun --sdk appletvos --show-sdk-path)
+          swift build -v --triple arm64-apple-tvos13.0 -sdk $SDK
 
       - name: Test for tvOS
-        run: swift test -v --triple arm64-apple-tvos13.0
+        run: |
+          SDK=$(xcrun --sdk appletvos --show-sdk-path)
+          swift test -v --triple arm64-apple-tvos13.0 -sdk $SDK
 
   build-visionos:
     runs-on: macos-14
@@ -113,7 +121,11 @@ jobs:
           swift-version: ${{ matrix.swift-version }}
 
       - name: Build for visionOS
-        run: swift build -v --triple arm64-apple-visionos1.0
+        run: |
+          SDK=$(xcrun --sdk xros --show-sdk-path)
+          swift build -v --triple arm64-apple-visionos1.0 -sdk $SDK
 
       - name: Test for visionOS
-        run: swift test -v --triple arm64-apple-visionos1.0
+        run: |
+          SDK=$(xcrun --sdk xros --show-sdk-path)
+          swift test -v --triple arm64-apple-visionos1.0 -sdk $SDK

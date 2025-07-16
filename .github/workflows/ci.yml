@@ -53,8 +53,9 @@ jobs:
           swift-version: ${{ matrix.swift-version }}
       - name: Build and Test
         run: |
-          swift build -v --triple arm64-apple-ios13.0
-          swift test -v --triple arm64-apple-ios13.0
+          SDK=$(xcrun --sdk iphoneos --show-sdk-path)
+          swift build -v --triple arm64-apple-ios13.0 -sdk $SDK
+          swift test -v --triple arm64-apple-ios13.0 -sdk $SDK
 
   build-tvos:
     runs-on: macos-14
@@ -72,8 +73,9 @@ jobs:
           swift-version: ${{ matrix.swift-version }}
       - name: Build and Test
         run: |
-          swift build -v --triple arm64-apple-tvos13.0
-          swift test -v --triple arm64-apple-tvos13.0
+          SDK=$(xcrun --sdk appletvos --show-sdk-path)
+          swift build -v --triple arm64-apple-tvos13.0 -sdk $SDK
+          swift test -v --triple arm64-apple-tvos13.0 -sdk $SDK
 
   build-visionos:
     runs-on: macos-14
@@ -91,8 +93,9 @@ jobs:
           swift-version: ${{ matrix.swift-version }}
       - name: Build and Test
         run: |
-          swift build -v --triple arm64-apple-visionos1.0
-          swift test -v --triple arm64-apple-visionos1.0
+          SDK=$(xcrun --sdk xros --show-sdk-path)
+          swift build -v --triple arm64-apple-visionos1.0 -sdk $SDK
+          swift test -v --triple arm64-apple-visionos1.0 -sdk $SDK
 
   # Linux
   build-linux:
