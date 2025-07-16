@@ -8,6 +8,8 @@
 //  crossover, mutation, replacement, and termination criteria. It provides a flexible
 //  interface for evolving populations of elements conforming to FitnessEvaluatable.
 
+// MARK: - GeneticOperators
+
 /// Protocol defining the core genetic algorithm operations required to evolve a population.
 /// The associated type `Element` must conform to `FitnessEvaluatable` to allow fitness-based operations.
 public protocol GeneticOperators {
@@ -60,21 +62,21 @@ public extension GeneticOperators {
 
     /// Default crossover operator that returns the parents unchanged (no crossover).
     static func crossoverOperator(parent1: Element, parent2: Element) -> [Element] {
-        return [parent1, parent2]
+        [parent1, parent2]
     }
 
     /// Default mutation operator that returns the element unchanged (no mutation).
     static func mutationOperator(element: Element) -> Element {
-        return element
+        element
     }
 
     /// Default replacement operator that completely replaces the old population with the new one.
     static func replacementOperator(old _: [Element], new: [Element]) -> [Element] {
-        return new
+        new
     }
 
     /// Default termination condition that stops the algorithm after a fixed maximum number of generations.
     static func fixedGenerationTermination(maxGenerations: Int) -> TerminationCheck<Element> {
-        return { generation, _ in generation >= maxGenerations }
+        { generation, _ in generation >= maxGenerations }
     }
 }

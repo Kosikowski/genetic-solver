@@ -6,6 +6,8 @@
 
 /// Genetic Solver: highly generic, extensible genetic algorithm framework
 public struct GeneticSolver<Element: GeneticElement & FitnessEvaluatable> {
+    // MARK: Properties
+
     // Parameters
     public var populationSize: Int
     public var crossoverRate: Double
@@ -24,6 +26,8 @@ public struct GeneticSolver<Element: GeneticElement & FitnessEvaluatable> {
 
     /// The current generation count.
     public private(set) var currentGeneration: Int
+
+    // MARK: Lifecycle
 
     /// Initialize the genetic solver with the specified parameters and operators.
     public init(
@@ -50,6 +54,8 @@ public struct GeneticSolver<Element: GeneticElement & FitnessEvaluatable> {
         currentPopulation = (0 ..< populationSize).map { _ in newElement() }
         currentGeneration = 0
     }
+
+    // MARK: Functions
 
     /// Run the genetic algorithm until termination or maxGenerations reached, returning the final population.
     public mutating func solve(maxGenerations: Int = 1000) -> [Element] {

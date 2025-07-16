@@ -4,6 +4,8 @@
 //  Created by Mateusz Kosikowski on 05/02/2024.
 //
 
+// MARK: - GeneticElement
+
 /// Protocol that represents an individual in the genetic algorithm.
 public protocol GeneticElement {} // a marker porotocol for the Solver
 
