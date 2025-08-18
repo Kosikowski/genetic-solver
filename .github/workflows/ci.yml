@@ -27,7 +27,7 @@ jobs:
           - swift-version: 6.1.2
             runner: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
@@ -60,7 +60,7 @@ jobs:
             runner: macos-latest
             use_xcodebuild: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
@@ -94,7 +94,7 @@ jobs:
             runner: macos-latest
             use_xcodebuild: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
@@ -128,7 +128,7 @@ jobs:
             runner: macos-latest
             use_xcodebuild: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
@@ -157,7 +157,7 @@ jobs:
       matrix:
         swift-version: [5.9, 6.1.2]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install Swift
         uses: SwiftyLab/setup-swift@v1
         with:
@@ -176,7 +176,7 @@ jobs:
       matrix:
         swift-version: [5.9, 6.1.2]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install Swift
         uses: SwiftyLab/setup-swift@v1
         with:
@@ -196,7 +196,7 @@ jobs:
       matrix:
         swift-version: [5.9, 6.1.2]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install Swift
         uses: SwiftyLab/setup-swift@v1
         with:
@@ -219,7 +219,7 @@ jobs:
       matrix:
         swift-version: [5.9, 6.1.2]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install Swift
         uses: SwiftyLab/setup-swift@v1
         with:
@@ -242,7 +242,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [build-macos, build-ios, build-tvos, build-visionos, build-linux, build-linux-release, build-windows, build-windows-release]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 

@@ -18,7 +18,7 @@ jobs:
     name: SwiftFormat Check
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0  # Required for SwiftFormat to work properly
 

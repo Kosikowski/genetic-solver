@@ -21,7 +21,7 @@ jobs:
         swift-version: [5.9, 6.1.2]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install Swift
         uses: SwiftyLab/setup-swift@v1
@@ -45,7 +45,7 @@ jobs:
         swift-version: [5.9, 6.1.2]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install Swift
         uses: SwiftyLab/setup-swift@v1
