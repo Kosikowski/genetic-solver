@@ -190,11 +190,11 @@ jobs:
 
   # Windows
   build-windows:
-    runs-on: windows-2022
+    runs-on: windows-2025
     name: Windows (Swift ${{ matrix.swift-version }})
     strategy:
       matrix:
-        swift-version: [5.9, 6.1.2]
+        swift-version: [6.1.2]
     steps:
       - uses: actions/checkout@v6
       - name: Install Swift
@@ -213,11 +213,11 @@ jobs:
         shell: pwsh
 
   build-windows-release:
-    runs-on: windows-2022
+    runs-on: windows-2025
     name: Windows Release (Swift ${{ matrix.swift-version }})
     strategy:
       matrix:
-        swift-version: [5.9, 6.1.2]
+        swift-version: [6.1.2]
     steps:
       - uses: actions/checkout@v6
       - name: Install Swift
