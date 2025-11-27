@@ -14,11 +14,11 @@ permissions:
 
 jobs:
   build-windows:
-    runs-on: windows-2022
+    runs-on: windows-2025
     name: Build and Test (Windows)
     strategy:
       matrix:
-        swift-version: [5.9, 6.1.2]
+        swift-version: [6.1.2]
 
     steps:
       - uses: actions/checkout@v6
@@ -43,11 +43,11 @@ jobs:
         shell: pwsh
 
   build-windows-release:
-    runs-on: windows-2022
+    runs-on: windows-2025
     name: Build and Test (Windows Release)
     strategy:
       matrix:
-        swift-version: [5.9, 6.1.2]
+        swift-version: [6.1.2]
 
     steps:
       - uses: actions/checkout@v6

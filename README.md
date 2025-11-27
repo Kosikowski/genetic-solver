@@ -5,6 +5,7 @@
 
 A highly generic and extensible genetic algorithm framework written in Swift. This library provides a flexible foundation for implementing genetic algorithms with customizable selection, crossover, mutation, and replacement operators.
 
+
 ## Genetic Algorithm Overview
 
 Genetic algorithms are optimization techniques inspired by natural selection and genetics. The algorithm follows these fundamental steps:
