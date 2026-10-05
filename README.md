@@ -442,6 +442,15 @@ struct KnapsackIndividual: GeneticElement, FitnessEvaluatable {
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
+### Testing
+
+Run the tests with `swift test`. CI also builds and tests on Linux with the oldest supported Swift version, which can reject code that newer compilers accept. To run those builds locally (requires Docker):
+
+```bash
+./scripts/test-linux.sh          # Swift versions from the Linux CI workflow
+./scripts/test-linux.sh 5.9      # A specific version
+```
+
 ### Code Formatting
 
 This project uses SwiftFormat to maintain consistent code style. Different SwiftFormat versions can format the same code differently, so the project pins one version as the SwiftFormat `rev` in `.pre-commit-config.yaml`. The pre-commit hook and CI both use that version, and `./scripts/swiftformat-version.sh` prints it.
