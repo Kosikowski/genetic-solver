@@ -136,7 +136,8 @@ public struct GeneticSolver<Element: GeneticElement> {
 
     /// The fittest individual in the current population, with its fitness;
     /// on a tie, the first one. It compares the fitness values the solver
-    /// already has, without calling `fitness()`.
+    /// already has, without calling `fitness()`. A fitness that isn't equal
+    /// to itself, such as NaN, ranks below every other fitness.
     ///
     /// The default replacement operator replaces the whole population, so the
     /// best individual found so far can be lost. With an `eliteCount` of at
@@ -144,7 +145,7 @@ public struct GeneticSolver<Element: GeneticElement> {
     public var bestElement: EvaluatedElement<Element> {
         // The population is never empty: `populationSize` is at least 1 and
         // `step()` stops if a replacement operator returns no individuals.
-        currentPopulation.max { $0.fitness < $1.fitness }!
+        currentPopulation.max { isFitter($1.fitness, than: $0.fitness) }!
     }
 
     // MARK: Lifecycle

@@ -44,6 +44,7 @@ These changes can affect code written for 0.1.0:
 ### Fixed
 
 - `step()` no longer loops forever when the crossover operator returns no children; the parents are copied instead.
+- A NaN fitness ranks below every other fitness. Before, a NaN drawn first won its tournament, because no value is greater than NaN.
 - README: the quick start ran no generations, the install snippet named a version that didn't exist, the protocol-based example selected the same parent twice, and the roulette wheel, elitism and Traveling Salesman examples crashed or didn't compile. Each complete example is now covered by a test.
 
 ## 0.1.0

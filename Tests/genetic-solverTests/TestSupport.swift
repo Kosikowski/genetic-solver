@@ -121,3 +121,20 @@ enum ScoredDefaultOperators: GeneticOperators {
         ScoredIndividual(id: 0, score: 0)
     }
 }
+
+// MARK: - ScriptedGenerator
+
+/// Returns the given values in order, then repeats the last one. For a
+/// two-element array, `randomElement(using:)` picks index 0 for 0 and index 1
+/// for `UInt64.max`.
+struct ScriptedGenerator: RandomNumberGenerator {
+    // MARK: Properties
+
+    var values: [UInt64]
+
+    // MARK: Functions
+
+    mutating func next() -> UInt64 {
+        values.count > 1 ? values.removeFirst() : values[0]
+    }
+}

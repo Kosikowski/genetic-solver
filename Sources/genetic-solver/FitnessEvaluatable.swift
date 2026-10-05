@@ -15,5 +15,8 @@ public protocol FitnessEvaluatable {
     /// and `bestElement` use instead of calling it again. So it may be
     /// expensive, but it should depend only on the individual: the result is
     /// kept for as long as the individual stays in the population.
+    ///
+    /// A value that isn't equal to itself, such as `Double.nan`, ranks below
+    /// every other value in tournament selection, elitism and `bestElement`.
     func fitness() -> Fitness
 }

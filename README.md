@@ -93,7 +93,7 @@ struct MyIndividual: GeneticElement {
 }
 ```
 
-The solver calls `fitness()` once for each new individual and keeps the result with it, as an `EvaluatedElement` with an `element` and its `fitness`. The selection and replacement operators, the termination check and `bestElement` all receive these, so they read `fitness` instead of calling `fitness()` again. A fitness function can therefore be expensive, but it should depend only on the individual, because the result is kept for as long as the individual is in the population.
+The solver calls `fitness()` once for each new individual and keeps the result with it, as an `EvaluatedElement` with an `element` and its `fitness`. The selection and replacement operators, the termination check and `bestElement` all receive these, so they read `fitness` instead of calling `fitness()` again. A fitness function can therefore be expensive, but it should depend only on the individual, because the result is kept for as long as the individual is in the population. If it returns NaN, the built-in tournament selection, elitism and `bestElement` rank that individual below every other one.
 
 ### 2. Implement Genetic Operators
 

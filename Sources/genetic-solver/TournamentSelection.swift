@@ -57,7 +57,8 @@ func tournamentPair<Element: FitnessEvaluatable>(
 }
 
 /// Returns the fittest of `size` individuals drawn at random, with
-/// replacement, from `population`; on a tie, the one drawn first.
+/// replacement, from `population`; on a tie, the one drawn first. A NaN
+/// fitness ranks below every other fitness (see `isFitter(_:than:)`).
 private func tournamentWinner<Element: FitnessEvaluatable>(
     of population: [EvaluatedElement<Element>],
     size: Int,
@@ -71,7 +72,7 @@ private func tournamentWinner<Element: FitnessEvaluatable>(
     var winner = population.randomElement(using: &generator)!
     for _ in 1 ..< size {
         let candidate = population.randomElement(using: &generator)!
-        if candidate.fitness > winner.fitness {
+        if isFitter(candidate.fitness, than: winner.fitness) {
             winner = candidate
         }
     }
