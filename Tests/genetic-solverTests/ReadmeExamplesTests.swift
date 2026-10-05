@@ -222,9 +222,89 @@ private func makeStallingSolver(terminationCheck: @escaping TerminationCheck<MyI
     )
 }
 
+// MARK: - City
+
+/// The types from the README's Traveling Salesman Problem example.
+private struct City {
+    let x: Double, y: Double
+}
+
+// MARK: - TSPIndividual
+
+private struct TSPIndividual: GeneticElement {
+    // MARK: Properties
+
+    var route: [Int] // A permutation of the indices of `cities`
+    let cities: [City]
+
+    // MARK: Functions
+
+    func fitness() -> Double {
+        var totalDistance = 0.0
+        for i in 0 ..< route.count {
+            let current = cities[route[i]]
+            let next = cities[route[(i + 1) % route.count]]
+            let dx = next.x - current.x
+            let dy = next.y - current.y
+            totalDistance += (dx * dx + dy * dy).squareRoot()
+        }
+        // Higher fitness = shorter distance (infinite for a route of length 0)
+        return 1.0 / totalDistance
+    }
+}
+
+// MARK: - Item
+
+/// The types from the README's Knapsack Problem example.
+private struct Item {
+    let weight: Int
+    let value: Int
+}
+
+// MARK: - KnapsackIndividual
+
+private struct KnapsackIndividual: GeneticElement {
+    // MARK: Properties
+
+    var selection: [Bool]
+    let items: [Item]
+    let maxWeight: Int
+
+    // MARK: Functions
+
+    func fitness() -> Double {
+        let totalWeight = zip(selection, items).reduce(0) { sum, pair in
+            sum + (pair.0 ? pair.1.weight : 0)
+        }
+
+        if totalWeight > maxWeight {
+            return 0.0 // Invalid solution
+        }
+
+        let totalValue = zip(selection, items).reduce(0) { sum, pair in
+            sum + (pair.0 ? pair.1.value : 0)
+        }
+
+        return Double(totalValue)
+    }
+}
+
 // MARK: - ReadmeExamplesTests
 
 final class ReadmeExamplesTests: XCTestCase {
+    // MARK: Properties
+
+    // MARK: Traveling Salesman Problem
+
+    /// The corners of a unit square, in order around it.
+    private let square = [City(x: 0, y: 0), City(x: 1, y: 0), City(x: 1, y: 1), City(x: 0, y: 1)]
+
+    // MARK: Knapsack Problem
+
+    private let items = [Item(weight: 2, value: 3), Item(weight: 3, value: 4), Item(weight: 4, value: 5)]
+
+    // MARK: Functions
+
     // MARK: Quick Start
 
     /// The README once stopped on a condition every starting population met,
@@ -548,6 +628,64 @@ final class ReadmeExamplesTests: XCTestCase {
         XCTAssertEqual(first.1, second.1)
         XCTAssertGreaterThanOrEqual(first.2, 950, "The example reaches its target")
         XCTAssertLessThan(first.1, 200)
+    }
+
+    func testTSPFitnessIsOneOverTheRouteLength() {
+        let aroundTheSquare = TSPIndividual(route: [0, 1, 2, 3], cities: square)
+
+        XCTAssertEqual(aroundTheSquare.fitness(), 1.0 / 4, accuracy: 1e-12)
+    }
+
+    func testTSPShorterRoutesAreFitter() {
+        let aroundTheSquare = TSPIndividual(route: [0, 1, 2, 3], cities: square)
+        let crossingDiagonals = TSPIndividual(route: [0, 2, 1, 3], cities: square)
+
+        XCTAssertEqual(crossingDiagonals.fitness(), 1.0 / (2 + 2 * 2.0.squareRoot()), accuracy: 1e-12)
+        XCTAssertGreaterThan(aroundTheSquare.fitness(), crossingDiagonals.fitness())
+    }
+
+    func testTSPFitnessDoesNotDependOnStartOrDirection() {
+        let route = TSPIndividual(route: [0, 1, 2, 3], cities: square)
+        let rotated = TSPIndividual(route: [2, 3, 0, 1], cities: square)
+        let reversed = TSPIndividual(route: [3, 2, 1, 0], cities: square)
+
+        XCTAssertEqual(rotated.fitness(), route.fitness(), accuracy: 1e-12)
+        XCTAssertEqual(reversed.fitness(), route.fitness(), accuracy: 1e-12)
+    }
+
+    func testTSPRoutesOfZeroLengthHaveInfiniteFitness() {
+        XCTAssertEqual(TSPIndividual(route: [0], cities: square).fitness(), .infinity)
+        XCTAssertEqual(TSPIndividual(route: [0, 1], cities: [City(x: 2, y: 2), City(x: 2, y: 2)]).fitness(), .infinity)
+    }
+
+    func testTSPTwoCitiesAreVisitedThereAndBack() {
+        let route = TSPIndividual(route: [0, 1], cities: [City(x: 0, y: 0), City(x: 3, y: 4)])
+
+        XCTAssertEqual(route.fitness(), 1.0 / 10, accuracy: 1e-12)
+    }
+
+    func testKnapsackFitnessIsTheTotalValue() {
+        let individual = KnapsackIndividual(selection: [true, false, true], items: items, maxWeight: 10)
+
+        XCTAssertEqual(individual.fitness(), 8)
+    }
+
+    func testKnapsackSelectionAtExactlyMaxWeightIsValid() {
+        let individual = KnapsackIndividual(selection: [true, true, false], items: items, maxWeight: 5)
+
+        XCTAssertEqual(individual.fitness(), 7)
+    }
+
+    func testKnapsackOverweightSelectionHasFitnessZero() {
+        let individual = KnapsackIndividual(selection: [true, true, true], items: items, maxWeight: 5)
+
+        XCTAssertEqual(individual.fitness(), 0)
+    }
+
+    func testKnapsackEmptySelectionHasFitnessZero() {
+        let individual = KnapsackIndividual(selection: [false, false, false], items: items, maxWeight: 5)
+
+        XCTAssertEqual(individual.fitness(), 0)
     }
 
     // MARK: Reproducible Runs

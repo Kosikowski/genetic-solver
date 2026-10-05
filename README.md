@@ -435,13 +435,15 @@ The `GeneticOperators` protocol provides default implementations for all genetic
 
 ### Traveling Salesman Problem
 
+A route visits every city once and returns to the start, so it is a permutation of the city indices. Use crossover and mutation operators that keep it a permutation, such as order crossover and swapping two cities; the one-point crossover from the Quick Start would visit some cities twice.
+
 ```swift
 struct City {
     let x: Double, y: Double
 }
 
 struct TSPIndividual: GeneticElement {
-    var route: [Int]
+    var route: [Int] // A permutation of the indices of `cities`
     let cities: [City]
 
     func fitness() -> Double {
@@ -449,10 +451,12 @@ struct TSPIndividual: GeneticElement {
         for i in 0..<route.count {
             let current = cities[route[i]]
             let next = cities[route[(i + 1) % route.count]]
-            let distance = sqrt(pow(next.x - current.x, 2) + pow(next.y - current.y, 2))
-            totalDistance += distance
+            let dx = next.x - current.x
+            let dy = next.y - current.y
+            totalDistance += (dx * dx + dy * dy).squareRoot()
         }
-        return 1.0 / totalDistance // Higher fitness = shorter distance
+        // Higher fitness = shorter distance (infinite for a route of length 0)
+        return 1.0 / totalDistance
     }
 }
 ```
