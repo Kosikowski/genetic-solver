@@ -27,7 +27,7 @@ This cycle repeats until the termination condition is satisfied, gradually impro
 - **Generic Design**: Works with any type that conforms to `GeneticElement`
 - **Customizable Operators**: Full control over selection, crossover, mutation, and replacement strategies
 - **Protocol-Based Design**: Uses `GeneticOperators` protocol for clean separation of concerns
-- **Default Implementations**: Built-in operators for common genetic algorithm patterns
+- **Default Implementations**: Built-in tournament selection and elitist replacement, and a default for every operator
 - **Type Safety**: Leverages Swift's type system for compile-time safety
 - **Extensible**: Easy to extend with custom operators and termination conditions
 - **State Tracking**: Monitor current population and generation during execution
@@ -390,7 +390,7 @@ let rouletteSelection: SelectionOperator<MyIndividual> = { population in
 
 - `GeneticElement`: Protocol for the individuals of a genetic algorithm; it includes `FitnessEvaluatable`
 - `FitnessEvaluatable`: Protocol for types that can be evaluated for fitness
-- `GeneticSolver<Element>`: Main solver class with state tracking
+- `GeneticSolver<Element>`: The solver. It is a struct, so copying it copies its state (population, generation count, termination result and random number generator). Its operators are closures, so any state they capture, such as the generator inside `tournamentSelection` or a counter in a termination check, is shared by the copies
 - `GeneticOperators`: Protocol defining core genetic algorithm operations; pass a conforming type to `GeneticSolver(populationSize:crossoverRate:mutationRate:operators:terminationCheck:)`
 
 ### Solver State and Methods
@@ -401,12 +401,12 @@ let rouletteSelection: SelectionOperator<MyIndividual> = { population in
 - `isTerminated`: Whether the termination check passed for the current population
 - `randomNumberGenerator`: The generator for the solver's decisions about applying crossover and mutation (the system generator unless you set one)
 - `step()`: Runs one generation and returns `isTerminated`; does nothing once terminated
-- `solve(maxGenerations:)`: Runs generations until terminated or `currentGeneration` reaches `maxGenerations`, and returns the population
+- `solve(maxGenerations:)`: Runs generations until terminated or `currentGeneration` reaches `maxGenerations`, and returns the current population
 - `reset()`: Starts over with a new population at generation 0
 
 ### Parameter Rules
 
-`populationSize` must be at least 1, and `crossoverRate` and `mutationRate` must be between 0 and 1. These are settable properties, so the solver checks them in `init`, `reset()` and `step()`, and stops the program with a message such as `crossoverRate must be between 0 and 1, but is 1.5` when one is out of range. A replacement operator must return at least one individual.
+`populationSize` must be at least 1, and `crossoverRate` and `mutationRate` must be between 0 and 1; when you don't pass them, the rates are 0.7 and 0.01. These are settable properties, so the solver checks them in `init`, `reset()` and `step()`, and stops the program with a message such as `crossoverRate must be between 0 and 1, but is 1.5` when one is out of range. A replacement operator must return at least one individual.
 
 ### Random Numbers
 

@@ -160,4 +160,32 @@ final class SolverLifecycleTests: XCTestCase {
         XCTAssertEqual(solver.currentGeneration, 2)
         XCTAssertEqual(result.map(\.id), [4, 5, 4, 5])
     }
+
+    // MARK: Copies
+
+    func testCopiesHaveTheirOwnPopulationAndGenerationCount() {
+        var original = makeDeterministicSolver()
+        var copy = original
+
+        original.step()
+        original.step()
+        copy.reset()
+
+        XCTAssertEqual(original.currentGeneration, 2)
+        XCTAssertEqual(original.currentPopulation.map(\.id), [0, 1, 0, 1])
+        XCTAssertEqual(copy.currentGeneration, 0)
+        XCTAssertEqual(copy.currentPopulation.map(\.id), [4, 5, 6, 7])
+    }
+
+    /// Operators are closures, so state they capture is shared by copies.
+    func testCopiesShareStateCapturedByOperators() {
+        var checks = 0
+        var original = makeDeterministicSolver(terminationCheck: { _, _ in checks += 1; return false })
+        var copy = original
+
+        original.step()
+        copy.step()
+
+        XCTAssertEqual(checks, 3, "Once in init, then once for each copy's generation")
+    }
 }
