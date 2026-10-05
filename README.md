@@ -116,18 +116,12 @@ You can implement operators individually or create a `GeneticOperators` conformi
 
 #### Option A: Individual Operators
 
+Each operator is a closure. Selection uses the library's tournament selection; [Roulette Wheel Selection](#roulette-wheel-selection) shows how to write your own:
+
 ```swift
-// Selection: Tournament selection (each parent is the best of 3 random candidates)
-let selection: SelectionOperator<MyIndividual> = { population in
-    func selectOne() -> MyIndividual {
-        let candidates = (0..<3).map { _ -> (individual: MyIndividual, fitness: Double) in
-            let candidate = population.randomElement()!
-            return (candidate, candidate.fitness()) // Evaluate each candidate once
-        }
-        return candidates.max { $0.fitness < $1.fitness }!.individual
-    }
-    return (selectOne(), selectOne())
-}
+// Selection: Tournament selection (each parent is the fittest of 3 individuals
+// drawn at random). It also takes a tournament size and a random number generator.
+let selection: SelectionOperator<MyIndividual> = GeneticSolver.tournamentSelection()
 
 // Crossover: One-point crossover
 let crossover: CrossoverOperator<MyIndividual> = { parent1, parent2 in

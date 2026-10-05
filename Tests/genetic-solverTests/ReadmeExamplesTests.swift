@@ -58,16 +58,7 @@ private enum ReadmeQuickStart {
     static let populationSize = 50
     static let maxGenerations = 200
 
-    static let selection: SelectionOperator<MyIndividual> = { population in
-        func selectOne() -> MyIndividual {
-            let candidates = (0 ..< 3).map { _ -> (individual: MyIndividual, fitness: Double) in
-                let candidate = population.randomElement()!
-                return (candidate, candidate.fitness()) // Evaluate each candidate once
-            }
-            return candidates.max { $0.fitness < $1.fitness }!.individual
-        }
-        return (selectOne(), selectOne())
-    }
+    static let selection: SelectionOperator<MyIndividual> = GeneticSolver.tournamentSelection()
 
     static let crossover: CrossoverOperator<MyIndividual> = { parent1, parent2 in
         let point = Int.random(in: 0 ..< parent1.genes.count)
