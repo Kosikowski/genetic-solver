@@ -392,7 +392,7 @@ let rouletteSelection: SelectionOperator<MyIndividual> = { population in
 
 - `GeneticElement`: Protocol for the individuals of a genetic algorithm; it includes `FitnessEvaluatable`
 - `FitnessEvaluatable`: Protocol for types that can be evaluated for fitness
-- `GeneticSolver<Element>`: The solver. It is a struct, so copying it copies its state (population, generation count, termination result and random number generator). Its operators are closures, so any state they capture, such as the generator inside `tournamentSelection` or a counter in a termination check, is shared by the copies
+- `GeneticSolver<Element>`: The solver. It is a struct, so copying it copies its state: population, generation count, termination result and `randomNumberGenerator`. A `SeededRandomNumberGenerator` is copied with its state, so the copy makes the same crossover and mutation decisions; the system generator has no state to copy, and a generator that is a class is shared. The operators are closures, so any state they capture, such as the generator inside `tournamentSelection` or a counter in a termination check, is shared by the copies
 - `GeneticOperators`: Protocol defining core genetic algorithm operations; pass a conforming type to `GeneticSolver(populationSize:crossoverRate:mutationRate:operators:terminationCheck:)`
 
 ### Solver State and Methods

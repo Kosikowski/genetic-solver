@@ -51,8 +51,15 @@ public struct GeneticSolver<Element: GeneticElement> {
     /// `SystemRandomNumberGenerator`.
     ///
     /// To make runs reproducible, set it to a `SeededRandomNumberGenerator` and
-    /// give your operators seeded generators too. Copying the solver copies
-    /// the generator's state, so the copies make the same decisions.
+    /// give your operators seeded generators too.
+    ///
+    /// Copying the solver copies this property. For a value type such as
+    /// `SeededRandomNumberGenerator`, that copies its state, so the copy makes
+    /// the same crossover and mutation decisions as the original. Copies of
+    /// `SystemRandomNumberGenerator` decide independently, and a generator
+    /// that is a class is shared by the copies. Generators captured by the
+    /// operators, such as the one in `tournamentSelection(tournamentSize:using:)`,
+    /// are shared too, so copies of a solver pick different parents.
     public var randomNumberGenerator: any RandomNumberGenerator = SystemRandomNumberGenerator()
 
     /// Decides whether the run is finished, given the generation count and

@@ -41,6 +41,31 @@ private struct ScriptedGenerator: RandomNumberGenerator {
     }
 }
 
+// MARK: - SharedCountingGenerator
+
+/// A generator that is a class, so every copy of a solver that holds it
+/// draws from the same instance. Counts the numbers drawn.
+private final class SharedCountingGenerator: RandomNumberGenerator {
+    // MARK: Properties
+
+    private(set) var draws = 0
+
+    private var base: SeededRandomNumberGenerator
+
+    // MARK: Lifecycle
+
+    init(seed: UInt64) {
+        base = SeededRandomNumberGenerator(seed: seed)
+    }
+
+    // MARK: Functions
+
+    func next() -> UInt64 {
+        draws += 1
+        return base.next()
+    }
+}
+
 // MARK: - ReproducibilityTests
 
 final class ReproducibilityTests: XCTestCase {
@@ -130,6 +155,69 @@ final class ReproducibilityTests: XCTestCase {
             copy.step()
             XCTAssertEqual(original.currentPopulation.map(\.id), copy.currentPopulation.map(\.id))
         }
+    }
+
+    /// `SystemRandomNumberGenerator` has no state to copy, so copies of a
+    /// solver that uses it decide independently.
+    func testCopiedSolversWithTheSystemGeneratorDecideIndependently() {
+        var original = makeMarkingSolver(crossoverRate: 0.5, mutationRate: 0.5)
+        var copy = original
+        var originalIDs: [[Int]] = []
+        var copyIDs: [[Int]] = []
+
+        for _ in 0 ..< 20 {
+            original.step()
+            copy.step()
+            originalIDs.append(original.currentPopulation.map(\.id))
+            copyIDs.append(copy.currentPopulation.map(\.id))
+        }
+
+        // Each generation makes 2 crossover and 4 mutation decisions at 50%,
+        // so 20 identical generations would have a chance of 2^-120.
+        XCTAssertNotEqual(originalIDs, copyIDs)
+    }
+
+    /// A generator that is a class isn't copied with the solver: the copies
+    /// share it and take turns drawing from it.
+    func testCopiedSolverSharesAClassBasedGenerator() {
+        let generator = SharedCountingGenerator(seed: 4)
+        var original = makeMarkingSolver(crossoverRate: 0.5, mutationRate: 0.5)
+        original.randomNumberGenerator = generator
+        var copy = original
+
+        original.step()
+        let drawsByOriginal = generator.draws
+        copy.step()
+
+        XCTAssertGreaterThan(drawsByOriginal, 0)
+        XCTAssertGreaterThan(generator.draws, drawsByOriginal, "The copy drew from the same generator")
+    }
+
+    /// The operators are closures, so the copies share what they capture,
+    /// including the generator of `tournamentSelection(using:)`: the copy
+    /// continues the original's sequence instead of repeating it.
+    func testCopiedSolverSharesTheGeneratorOfItsSelectionOperator() {
+        let population = (0 ..< 20).map { ScoredIndividual(id: $0, score: $0) }
+        let reference = GeneticSolver<ScoredIndividual>.tournamentSelection(using: SeededRandomNumberGenerator(seed: 6))
+        let firstPair = reference(population)
+        let secondPair = reference(population)
+        XCTAssertNotEqual([firstPair.0.id, firstPair.1.id], [secondPair.0.id, secondPair.1.id], "The seed must tell the pairs apart")
+
+        let original = GeneticSolver<ScoredIndividual>(
+            populationSize: 1,
+            selectionOperator: GeneticSolver.tournamentSelection(using: SeededRandomNumberGenerator(seed: 6)),
+            crossoverOperator: { [$0, $1] },
+            mutationOperator: { $0 },
+            replacementOperator: { _, new in new },
+            terminationCheck: { _, _ in false },
+            newElement: { ScoredIndividual(id: 0, score: 0) }
+        )
+        let copy = original
+        let fromOriginal = original.selectionOperator(population)
+        let fromCopy = copy.selectionOperator(population)
+
+        XCTAssertEqual([fromOriginal.0.id, fromOriginal.1.id], [firstPair.0.id, firstPair.1.id])
+        XCTAssertEqual([fromCopy.0.id, fromCopy.1.id], [secondPair.0.id, secondPair.1.id], "The copy continued the shared sequence")
     }
 
     func testSeededRunsAreReproducible() {
