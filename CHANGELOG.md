@@ -8,6 +8,14 @@ All notable changes to this package are listed here. Versions follow [semantic v
 
 These changes can affect code written for 0.1.0:
 
+- **Operators and termination checks receive each individual with its fitness.** The solver now calls `fitness()` once for each new individual and passes the result along with it as an `EvaluatedElement`, which has the individual as `element` and its `fitness`. Before, every operator and check that needed fitness called `fitness()` again, often several times per individual and generation.
+  - A `SelectionOperator` takes `[EvaluatedElement<Element>]` and returns two of its members. Read `$0.fitness` instead of calling `$0.fitness()`.
+  - A `ReplacementOperator` takes and returns `[EvaluatedElement<Element>]`. To add an individual of your own, wrap it in `EvaluatedElement(_:)`, which evaluates it once.
+  - A `TerminationCheck` takes `[EvaluatedElement<Element>]`.
+  - `currentPopulation`, the result of `solve(maxGenerations:)` and `bestElement` are evaluated too: use `.element` for the individual and `.fitness` for its fitness.
+  - In a `GeneticOperators` type, `selectionOperator(population:)`, `replacementOperator(old:new:)` and `fixedGenerationTermination(maxGenerations:)` use the same types. **Implementations with the 0.1.0 types still compile, but they no longer match the requirements, so the solver silently uses the default implementations instead.** Update their parameter and return types.
+  - The crossover and mutation operators and `newElement` don't change.
+  - Because the result is kept, `fitness()` should depend only on the individual.
 - **`solve(maxGenerations:)` continues instead of starting over.** It used to create a new population on every call, discarding the one from `init` and any progress made with `step()`. It now continues from the current state, and `maxGenerations` limits the total generation count rather than the generations run by that call. Call `reset()` first to start a new run.
 - **The termination check runs once per population.** It used to run up to three times per generation. It now runs exactly once for the population created by `init` or `reset()` and once after each generation, so `init` calls it for the starting population. Checks that keep their own state (for example, counting generations without improvement) now see each generation once.
 - **`step()` no longer calls the termination check before running a generation.** It uses `isTerminated`, the result of the latest call. So a check that depends on something outside the solver, such as a cancel flag or a deadline, sees a change only after the next generation, and once it has stopped the run, changing that state doesn't let the run continue. Call `checkTermination()` after changing the state to apply it right away.
@@ -18,6 +26,7 @@ These changes can affect code written for 0.1.0:
 
 ### Added
 
+- `EvaluatedElement` pairs an individual with its fitness, evaluated once.
 - `GeneticSolver(populationSize:crossoverRate:mutationRate:operators:terminationCheck:)` creates a solver from a `GeneticOperators` type.
 - `reset()` starts a new run with a new population.
 - `isTerminated` keeps the latest result of the termination check, and `checkTermination()` calls the check again for the current population.
@@ -29,7 +38,7 @@ These changes can affect code written for 0.1.0:
 ### Changed
 
 - `GeneticElement` includes `FitnessEvaluatable`, so conforming to `GeneticElement` is enough. Types that list both still compile; code that uses `GeneticElement` as a type needs `any` (see above).
-- The default tournament selection evaluates each candidate's fitness once instead of in every comparison.
+- Each individual's fitness is evaluated once, when it is created, instead of by every operator that needs it; a parent copied unchanged into the next generation keeps its fitness.
 - `solve(maxGenerations:)` is `@discardableResult`.
 
 ### Fixed

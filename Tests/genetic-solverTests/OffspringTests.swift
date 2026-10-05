@@ -28,7 +28,7 @@ final class OffspringTests: XCTestCase {
         solver.step()
 
         XCTAssertEqual(crossoverCalls, 2, "Each pass should add the two parents")
-        XCTAssertEqual(solver.currentPopulation.map(\.id), [0, 1, 0, 1])
+        XCTAssertEqual(solver.currentPopulation.map(\.element.id), [0, 1, 0, 1])
     }
 
     func testCrossoverSometimesReturningNoChildrenStillFillsThePopulation() {
@@ -51,7 +51,7 @@ final class OffspringTests: XCTestCase {
         // Calls 1, 3 and 5 add the parents (2 each); calls 2 and 4 add one
         // child each: 2 + 1 + 2 + 1 = 6 after four calls.
         XCTAssertEqual(crossoverCalls, 4)
-        XCTAssertEqual(solver.currentPopulation.map(\.id), [0, 1, 102, 0, 1, 104])
+        XCTAssertEqual(solver.currentPopulation.map(\.element.id), [0, 1, 102, 0, 1, 104])
     }
 
     // MARK: Number of children
@@ -70,7 +70,7 @@ final class OffspringTests: XCTestCase {
         solver.step()
 
         XCTAssertEqual(crossoverCalls, 3)
-        XCTAssertEqual(solver.currentPopulation.map(\.id), [101, 102, 103])
+        XCTAssertEqual(solver.currentPopulation.map(\.element.id), [101, 102, 103])
     }
 
     func testExtraChildrenAreDroppedToKeepThePopulationSize() {
@@ -82,7 +82,7 @@ final class OffspringTests: XCTestCase {
 
         solver.step()
 
-        XCTAssertEqual(solver.currentPopulation.map(\.id), [100, 101, 102, 103])
+        XCTAssertEqual(solver.currentPopulation.map(\.element.id), [100, 101, 102, 103])
     }
 
     func testOddPopulationSizeDropsTheLastPairsSecondChild() {
@@ -90,7 +90,7 @@ final class OffspringTests: XCTestCase {
 
         solver.step()
 
-        XCTAssertEqual(solver.currentPopulation.map(\.id), [0, 1, 0, 1, 0])
+        XCTAssertEqual(solver.currentPopulation.map(\.element.id), [0, 1, 0, 1, 0])
     }
 
     func testPopulationSizeOfOneUsesTheFirstParentOnly() {
@@ -107,7 +107,7 @@ final class OffspringTests: XCTestCase {
 
         solver.step()
 
-        XCTAssertEqual(solver.currentPopulation.map(\.id), [0])
+        XCTAssertEqual(solver.currentPopulation.map(\.element.id), [0])
     }
 
     // MARK: Crossover rate
@@ -127,7 +127,7 @@ final class OffspringTests: XCTestCase {
         }
 
         XCTAssertEqual(crossoverCalls, 0)
-        XCTAssertEqual(solver.currentPopulation.map(\.id), [0, 1, 0, 1])
+        XCTAssertEqual(solver.currentPopulation.map(\.element.id), [0, 1, 0, 1])
     }
 
     func testCrossoverRateOfOneCallsCrossoverForEveryPair() {

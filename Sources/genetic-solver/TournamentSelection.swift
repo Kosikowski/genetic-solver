@@ -6,8 +6,7 @@
 public extension GeneticSolver {
     /// Returns a tournament selection operator: each parent is the fittest of
     /// `tournamentSize` individuals drawn at random, with replacement, from the
-    /// population. On a tie, the individual drawn first wins, and each drawn
-    /// individual has its fitness evaluated once.
+    /// population. On a tie, the individual drawn first wins.
     ///
     /// Larger tournaments favor fitter individuals more strongly; a size of 1
     /// picks parents uniformly at random. The default `GeneticOperators`
@@ -46,11 +45,11 @@ public extension GeneticSolver {
 /// first. Both `tournamentSelection(tournamentSize:using:)` and the default
 /// `GeneticOperators` selection use it.
 func tournamentPair<Element: FitnessEvaluatable>(
-    from population: [Element],
+    from population: [EvaluatedElement<Element>],
     size: Int,
     using generator: inout some RandomNumberGenerator
 )
-    -> (Element, Element)
+    -> (EvaluatedElement<Element>, EvaluatedElement<Element>)
 {
     let first = tournamentWinner(of: population, size: size, using: &generator)
     let second = tournamentWinner(of: population, size: size, using: &generator)
@@ -58,26 +57,22 @@ func tournamentPair<Element: FitnessEvaluatable>(
 }
 
 /// Returns the fittest of `size` individuals drawn at random, with
-/// replacement, from `population`; on a tie, the one drawn first. Each drawn
-/// individual has its fitness evaluated once.
+/// replacement, from `population`; on a tie, the one drawn first.
 private func tournamentWinner<Element: FitnessEvaluatable>(
-    of population: [Element],
+    of population: [EvaluatedElement<Element>],
     size: Int,
     using generator: inout some RandomNumberGenerator
 )
-    -> Element
+    -> EvaluatedElement<Element>
 {
     if population.isEmpty {
         fatalError("selectionOperator needs at least one individual")
     }
     var winner = population.randomElement(using: &generator)!
-    var winnerFitness = winner.fitness()
     for _ in 1 ..< size {
         let candidate = population.randomElement(using: &generator)!
-        let candidateFitness = candidate.fitness()
-        if candidateFitness > winnerFitness {
+        if candidate.fitness > winner.fitness {
             winner = candidate
-            winnerFitness = candidateFitness
         }
     }
     return winner

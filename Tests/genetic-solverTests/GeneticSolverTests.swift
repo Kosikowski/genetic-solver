@@ -79,7 +79,7 @@ final class GeneticSolverTests: XCTestCase {
             return mutant
         }
         let replacement: TestReplacementOperator = { _, newPop in newPop }
-        let termination: TestTerminationCheck = { gen, pop in gen >= 50 || pop.allSatisfy { $0.gene == .one } }
+        let termination: TestTerminationCheck = { gen, pop in gen >= 50 || pop.allSatisfy { $0.element.gene == .one } }
 
         var solver = GeneticSolver<TestIndividual>(
             populationSize: 20,
@@ -95,7 +95,7 @@ final class GeneticSolverTests: XCTestCase {
 
         let finalPopulation = solver.solve(maxGenerations: 100)
         // Test that eventually all individuals are optimal
-        XCTAssertTrue(finalPopulation.allSatisfy { $0.gene == .one }, "All individuals should converge to gene .one")
+        XCTAssertTrue(finalPopulation.allSatisfy { $0.element.gene == .one }, "All individuals should converge to gene .one")
     }
 
     func testSolverRespectsMaxGenerations() {

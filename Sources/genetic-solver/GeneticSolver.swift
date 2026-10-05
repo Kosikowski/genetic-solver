@@ -4,6 +4,8 @@
 //  Created by Mateusz Kosikowski on 05/02/2024.
 //
 
+// MARK: - GeneticSolver
+
 /// Genetic Solver: highly generic, extensible genetic algorithm framework
 public struct GeneticSolver<Element: GeneticElement> {
     // MARK: Properties
@@ -95,8 +97,9 @@ public struct GeneticSolver<Element: GeneticElement> {
         }
     }
 
-    /// The current population of individuals.
-    public private(set) var currentPopulation: [Element]
+    /// The current population: each individual with its fitness, evaluated
+    /// once when the individual was created.
+    public private(set) var currentPopulation: [EvaluatedElement<Element>]
 
     /// The current generation count.
     public private(set) var currentGeneration: Int
@@ -111,19 +114,18 @@ public struct GeneticSolver<Element: GeneticElement> {
 
     // MARK: Computed Properties
 
-    /// The fittest individual in the current population; on a tie, the first
-    /// one. Each access evaluates `fitness()` once per individual.
+    /// The fittest individual in the current population, with its fitness;
+    /// on a tie, the first one. It compares the fitness values the solver
+    /// already has, without calling `fitness()`.
     ///
     /// The default replacement operator replaces the whole population, so the
     /// best individual found so far can be lost. With
     /// `elitistReplacement(eliteCount:)` (and an `eliteCount` of at least 1),
     /// this is always the best individual found so far.
-    public var bestElement: Element {
+    public var bestElement: EvaluatedElement<Element> {
         // The population is never empty: `populationSize` is at least 1 and
         // `step()` stops if a replacement operator returns no individuals.
-        let fitnesses = currentPopulation.map { $0.fitness() }
-        let bestIndex = fitnesses.indices.max { fitnesses[$0] < fitnesses[$1] }!
-        return currentPopulation[bestIndex]
+        currentPopulation.max { $0.fitness < $1.fitness }!
     }
 
     // MARK: Lifecycle
@@ -131,7 +133,8 @@ public struct GeneticSolver<Element: GeneticElement> {
     /// Initialize the genetic solver with the specified parameters and operators.
     ///
     /// The first population is created right away by calling `newElement`
-    /// `populationSize` times, and `terminationCheck` is called once for it.
+    /// `populationSize` times and evaluating each new individual's fitness
+    /// once, and `terminationCheck` is called once for it.
     ///
     /// - Precondition: `populationSize` is at least 1, and `crossoverRate` and
     ///   `mutationRate` are between 0 and 1.
@@ -163,7 +166,7 @@ public struct GeneticSolver<Element: GeneticElement> {
             mutationRate: mutationRate
         ))
 
-        let initialPopulation = (0 ..< populationSize).map { _ in newElement() }
+        let initialPopulation = (0 ..< populationSize).map { _ in EvaluatedElement(newElement()) }
         currentPopulation = initialPopulation
         currentGeneration = 0
         isTerminated = terminationCheck(0, initialPopulation)
@@ -214,7 +217,7 @@ public struct GeneticSolver<Element: GeneticElement> {
     /// The result is the same as `currentPopulation`, so it can be ignored, for
     /// example when only `bestElement` is needed.
     @discardableResult
-    public mutating func solve(maxGenerations: Int = 1000) -> [Element] {
+    public mutating func solve(maxGenerations: Int = 1000) -> [EvaluatedElement<Element>] {
         while currentGeneration < maxGenerations, !isTerminated {
             step()
         }
@@ -222,10 +225,10 @@ public struct GeneticSolver<Element: GeneticElement> {
     }
 
     /// Replace the population with `populationSize` new elements from
-    /// `newElement`, set `currentGeneration` back to 0, and call
-    /// `terminationCheck` once for the new population.
+    /// `newElement`, each evaluated once, set `currentGeneration` back to 0,
+    /// and call `terminationCheck` once for the new population.
     public mutating func reset() {
-        currentPopulation = (0 ..< populationSize).map { _ in newElement() }
+        currentPopulation = (0 ..< populationSize).map { _ in EvaluatedElement(newElement()) }
         currentGeneration = 0
         checkTermination()
     }
@@ -250,29 +253,72 @@ public struct GeneticSolver<Element: GeneticElement> {
     /// `true`. Otherwise it runs one generation, calls `terminationCheck`
     /// once for the new population, and returns the result. It doesn't call
     /// the check before running the generation; see `checkTermination()`.
+    ///
+    /// Each new individual has its fitness evaluated once, after mutation. A
+    /// parent that is copied unchanged (crossover skipped or returning no
+    /// children, and no mutation) keeps the fitness it already has.
     @discardableResult
     public mutating func step() -> Bool {
         guard !isTerminated else { return true }
         // Selection & Crossover
-        var offspring: [Element] = []
+        var offspring: [Offspring] = []
         while offspring.count < populationSize {
             let (parent1, parent2) = selectionOperator(currentPopulation)
-            let children = Double.random(in: 0 ..< 1, using: &randomNumberGenerator) < crossoverRate ? crossoverOperator(parent1, parent2) : []
+            let children = Double.random(in: 0 ..< 1, using: &randomNumberGenerator) < crossoverRate
+                ? crossoverOperator(parent1.element, parent2.element)
+                : []
             // Copy the parents when crossover is skipped or returns no children,
             // so every pass adds at least one element and the loop always ends.
-            offspring.append(contentsOf: children.isEmpty ? [parent1, parent2] : children)
+            if children.isEmpty {
+                offspring += [.copy(parent1), .copy(parent2)]
+            } else {
+                offspring += children.map { .new($0) }
+            }
         }
         offspring = Array(offspring.prefix(populationSize))
         // Mutation
-        let mutated = offspring.map { elem in
-            Double.random(in: 0 ..< 1, using: &randomNumberGenerator) < mutationRate ? mutationOperator(elem) : elem
+        let mutated: [Offspring] = offspring.map { candidate in
+            Double.random(in: 0 ..< 1, using: &randomNumberGenerator) < mutationRate
+                ? .new(mutationOperator(candidate.element))
+                : candidate
         }
+        // Evaluation: once for each individual that isn't an unchanged copy
+        let newIndividuals = mutated.map(\.evaluated)
         // Replacement
-        currentPopulation = replacementOperator(currentPopulation, mutated)
+        currentPopulation = replacementOperator(currentPopulation, newIndividuals)
         if currentPopulation.isEmpty {
             fatalError("replacementOperator returned no individuals")
         }
         currentGeneration += 1
         return checkTermination()
+    }
+}
+
+// MARK: GeneticSolver.Offspring
+
+extension GeneticSolver {
+    /// An individual of the next generation before it is evaluated: either a
+    /// parent copied unchanged, whose fitness is known, or a new individual
+    /// from crossover or mutation.
+    private enum Offspring {
+        case copy(EvaluatedElement<Element>)
+        case new(Element)
+
+        // MARK: Computed Properties
+
+        var element: Element {
+            switch self {
+                case let .copy(parent): parent.element
+                case let .new(element): element
+            }
+        }
+
+        /// The individual with its fitness, evaluating it if it is new.
+        var evaluated: EvaluatedElement<Element> {
+            switch self {
+                case let .copy(parent): parent
+                case let .new(element): EvaluatedElement(element)
+            }
+        }
     }
 }

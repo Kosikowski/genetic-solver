@@ -28,6 +28,7 @@ This cycle repeats until the termination condition is satisfied, gradually impro
 - **Customizable Operators**: Full control over selection, crossover, mutation, and replacement strategies
 - **Protocol-Based Design**: Uses `GeneticOperators` protocol for clean separation of concerns
 - **Default Implementations**: Built-in tournament selection and elitist replacement, and a default for every operator
+- **Fitness Evaluated Once**: The solver evaluates each individual's fitness once and passes it to the operators along with the individual
 - **Type Safety**: Leverages Swift's type system for compile-time safety
 - **Extensible**: Easy to extend with custom operators and termination conditions
 - **State Tracking**: Monitor current population and generation during execution
@@ -92,23 +93,7 @@ struct MyIndividual: GeneticElement {
 }
 ```
 
-`fitness()` can be called many times for the same individual, for example once per candidate in tournament selection. If it's expensive, compute it once when the individual is created and return the stored value. Keep the genes immutable (`let`) so the stored value can't go out of date, and have your operators create new individuals instead of changing copies:
-
-```swift
-struct ExpensiveIndividual: GeneticElement {
-    let genes: [Int]
-    private let storedFitness: Double
-
-    init(genes: [Int]) {
-        self.genes = genes
-        storedFitness = Double(genes.reduce(0, +)) // Replace with the expensive calculation
-    }
-
-    func fitness() -> Double {
-        storedFitness
-    }
-}
-```
+The solver calls `fitness()` once for each new individual and keeps the result with it, as an `EvaluatedElement` with an `element` and its `fitness`. The selection and replacement operators, the termination check and `bestElement` all receive these, so they read `fitness` instead of calling `fitness()` again. A fitness function can therefore be expensive, but it should depend only on the individual, because the result is kept for as long as the individual is in the population.
 
 ### 2. Implement Genetic Operators
 
@@ -197,7 +182,7 @@ var solver = GeneticSolver<MyIndividual>(
     replacementOperator: { _, new in new }, // Generational replacement
     terminationCheck: { _, population in
         // Stop as soon as any individual reaches the target fitness.
-        population.contains { $0.fitness() >= 950 }
+        population.contains { $0.fitness >= 950 }
     },
     newElement: {
         MyIndividual(genes: (0..<10).map { _ in Int.random(in: 0...100) })
@@ -206,7 +191,7 @@ var solver = GeneticSolver<MyIndividual>(
 
 // Run until the target is reached, or for at most 200 generations.
 solver.solve(maxGenerations: 200)
-print("Best fitness: \(solver.bestElement.fitness())")
+print("Best fitness: \(solver.bestElement.fitness)")
 ```
 
 #### Using Protocol-Based Operators
@@ -224,7 +209,7 @@ var solver = GeneticSolver(
 
 // Runs until the termination check stops it at generation 100.
 solver.solve()
-print("Best fitness: \(solver.bestElement.fitness())")
+print("Best fitness: \(solver.bestElement.fitness)")
 ```
 
 Each operator can still be replaced afterwards, for example `solver.mutationOperator = { ... }`.
@@ -240,7 +225,7 @@ var solver = GeneticSolver<MyIndividual>(/* ... */)
 
 // Run one generation at a time
 while !solver.step() {
-    print("Generation \(solver.currentGeneration): Best fitness = \(solver.bestElement.fitness())")
+    print("Generation \(solver.currentGeneration): Best fitness = \(solver.bestElement.fitness)")
 }
 
 // Access current state
@@ -282,7 +267,7 @@ func stallTermination(patience: Int) -> TerminationCheck<MyIndividual> {
             bestSoFar = -Double.infinity
             lastImprovement = 0
         }
-        let currentBest = population.map { $0.fitness() }.max() ?? -Double.infinity
+        let currentBest = population.map(\.fitness).max() ?? -Double.infinity
         if currentBest > bestSoFar {
             bestSoFar = currentBest
             lastImprovement = generation
@@ -307,12 +292,12 @@ var solver = GeneticSolver<MyIndividual>(
     crossoverOperator: crossover,
     mutationOperator: mutation,
     replacementOperator: GeneticSolver.elitistReplacement(eliteCount: 2), // Keep the 2 fittest
-    terminationCheck: { _, population in population.contains { $0.fitness() >= 950 } },
+    terminationCheck: { _, population in population.contains { $0.fitness >= 950 } },
     newElement: { MyIndividual(genes: (0..<10).map { _ in Int.random(in: 0...100) }) }
 )
 ```
 
-The elite replace the last new individuals, so the population size doesn't change. Each individual of the current population has its fitness evaluated once per generation.
+The elite replace the last new individuals, so the population size doesn't change. Elitist replacement uses the fitness the solver has already evaluated.
 
 ### Reproducible Runs
 
@@ -339,7 +324,7 @@ var solver = GeneticSolver<MyIndividual>(
         return mutant
     },
     replacementOperator: { _, new in new },
-    terminationCheck: { _, population in population.contains { $0.fitness() >= 950 } },
+    terminationCheck: { _, population in population.contains { $0.fitness >= 950 } },
     newElement: { MyIndividual(genes: (0..<10).map { _ in Int.random(in: 0...100, using: &random) }) }
 )
 solver.randomNumberGenerator = SeededRandomNumberGenerator(seed: 2) // For the solver's own decisions
@@ -355,18 +340,17 @@ Each individual's chance of being picked is proportional to its fitness, so fitn
 
 ```swift
 let rouletteSelection: SelectionOperator<MyIndividual> = { population in
-    let fitnesses = population.map { $0.fitness() } // Evaluate each individual once
-    precondition(fitnesses.allSatisfy { $0 >= 0 && $0.isFinite }, "Roulette wheel selection needs finite, non-negative fitness")
-    let totalFitness = fitnesses.reduce(0, +)
+    precondition(population.allSatisfy { $0.fitness >= 0 && $0.fitness.isFinite }, "Roulette wheel selection needs finite, non-negative fitness")
+    let totalFitness = population.reduce(0) { $0 + $1.fitness }
 
-    func selectOne() -> MyIndividual {
+    func selectOne() -> EvaluatedElement<MyIndividual> {
         // With no positive fitness there is no wheel to spin.
         guard totalFitness > 0 else { return population.randomElement()! }
 
         let target = Double.random(in: 0..<totalFitness)
         var cumulative = 0.0
-        for (individual, fitness) in zip(population, fitnesses) {
-            cumulative += fitness
+        for individual in population {
+            cumulative += individual.fitness
             if cumulative > target {
                 return individual
             }
@@ -386,14 +370,15 @@ let rouletteSelection: SelectionOperator<MyIndividual> = { population in
 
 - `GeneticElement`: Protocol for the individuals of a genetic algorithm; it includes `FitnessEvaluatable`
 - `FitnessEvaluatable`: Protocol for types that can be evaluated for fitness
+- `EvaluatedElement<Element>`: An individual (`element`) with its `fitness`, evaluated once when the value is created. The population, the selection and replacement operators, the termination check and `bestElement` use it; `EvaluatedElement(_:)` evaluates a new individual
 - `GeneticSolver<Element>`: The solver. It is a struct, so copying it copies its state: population, generation count, termination result and `randomNumberGenerator`. A `SeededRandomNumberGenerator` is copied with its state, so the copy makes the same crossover and mutation decisions; the system generator has no state to copy, and a generator that is a class is shared. The operators are closures, so any state they capture, such as the generator inside `tournamentSelection` or a counter in a termination check, is shared by the copies
 - `GeneticOperators`: Protocol defining core genetic algorithm operations; pass a conforming type to `GeneticSolver(populationSize:crossoverRate:mutationRate:operators:terminationCheck:)`
 
 ### Solver State and Methods
 
-- `currentPopulation`: The current population
+- `currentPopulation`: The current population, each individual with its fitness
 - `currentGeneration`: The number of generations run since `init` or the last `reset()`
-- `bestElement`: The fittest individual in the current population (with elitist replacement, the best found so far)
+- `bestElement`: The fittest individual in the current population, with its fitness (with elitist replacement, the best found so far)
 - `isTerminated`: The result of the latest termination check
 - `checkTermination()`: Calls the termination check again for the current population and updates `isTerminated`, for checks that depend on state outside the solver
 - `randomNumberGenerator`: The generator for the solver's decisions about applying crossover and mutation (the system generator unless you set one)
@@ -411,11 +396,11 @@ let rouletteSelection: SelectionOperator<MyIndividual> = { population in
 
 ### Operator Types
 
-- `SelectionOperator<Element>`: `([Element]) -> (Element, Element)`
+- `SelectionOperator<Element>`: `([EvaluatedElement<Element>]) -> (EvaluatedElement<Element>, EvaluatedElement<Element>)`. It returns two members of the population
 - `CrossoverOperator<Element>`: `(Element, Element) -> [Element]`. It may return any number of children; if it returns none, the parents are kept
 - `MutationOperator<Element>`: `(Element) -> Element`
-- `ReplacementOperator<Element>`: `([Element], [Element]) -> [Element]`
-- `TerminationCheck<Element>`: `(Int, [Element]) -> Bool`
+- `ReplacementOperator<Element>`: `([EvaluatedElement<Element>], [EvaluatedElement<Element>]) -> [EvaluatedElement<Element>]`
+- `TerminationCheck<Element>`: `(Int, [EvaluatedElement<Element>]) -> Bool`
 
 ### Default Operators
 

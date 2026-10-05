@@ -10,9 +10,10 @@ public protocol FitnessEvaluatable {
 
     /// Returns how good this individual is; higher is better.
     ///
-    /// Operators and termination checks may call this many times for the same
-    /// individual (the default tournament selection calls it once per
-    /// candidate). If it is expensive, compute it once, for example when the
-    /// individual is created, and return the stored value.
+    /// The solver calls it once for each new individual and keeps the result
+    /// in an `EvaluatedElement`, which the operators, the termination check
+    /// and `bestElement` use instead of calling it again. So it may be
+    /// expensive, but it should depend only on the individual: the result is
+    /// kept for as long as the individual stays in the population.
     func fitness() -> Fitness
 }

@@ -22,30 +22,6 @@ private struct MyIndividual: GeneticElement {
     }
 }
 
-// MARK: - ExpensiveIndividual
-
-/// The individual from the README's tip on expensive fitness.
-private struct ExpensiveIndividual: GeneticElement {
-    // MARK: Properties
-
-    let genes: [Int]
-
-    private let storedFitness: Double
-
-    // MARK: Lifecycle
-
-    init(genes: [Int]) {
-        self.genes = genes
-        storedFitness = Double(genes.reduce(0, +)) // Replace with the expensive calculation
-    }
-
-    // MARK: Functions
-
-    func fitness() -> Double {
-        storedFitness
-    }
-}
-
 // MARK: - ReadmeQuickStart
 
 /// The operators and solver from the README's Quick Start, Option A.
@@ -79,7 +55,7 @@ private enum ReadmeQuickStart {
     }
 
     static let terminationCheck: TerminationCheck<MyIndividual> = { _, population in
-        population.contains { $0.fitness() >= 950 }
+        population.contains { $0.fitness >= 950 }
     }
 
     // MARK: Static Functions
@@ -145,18 +121,17 @@ private struct MyGeneticOperators: GeneticOperators {
 /// The selection operator from the README's Roulette Wheel Selection section.
 private enum ReadmeRoulette {
     static let rouletteSelection: SelectionOperator<MyIndividual> = { population in
-        let fitnesses = population.map { $0.fitness() } // Evaluate each individual once
-        precondition(fitnesses.allSatisfy { $0 >= 0 && $0.isFinite }, "Roulette wheel selection needs finite, non-negative fitness")
-        let totalFitness = fitnesses.reduce(0, +)
+        precondition(population.allSatisfy { $0.fitness >= 0 && $0.fitness.isFinite }, "Roulette wheel selection needs finite, non-negative fitness")
+        let totalFitness = population.reduce(0) { $0 + $1.fitness }
 
-        func selectOne() -> MyIndividual {
+        func selectOne() -> EvaluatedElement<MyIndividual> {
             // With no positive fitness there is no wheel to spin.
             guard totalFitness > 0 else { return population.randomElement()! }
 
             let target = Double.random(in: 0 ..< totalFitness)
             var cumulative = 0.0
-            for (individual, fitness) in zip(population, fitnesses) {
-                cumulative += fitness
+            for individual in population {
+                cumulative += individual.fitness
                 if cumulative > target {
                     return individual
                 }
@@ -183,7 +158,7 @@ private func stallTermination(patience: Int) -> TerminationCheck<MyIndividual> {
             bestSoFar = -Double.infinity
             lastImprovement = 0
         }
-        let currentBest = population.map { $0.fitness() }.max() ?? -Double.infinity
+        let currentBest = population.map(\.fitness).max() ?? -Double.infinity
         if currentBest > bestSoFar {
             bestSoFar = currentBest
             lastImprovement = generation
@@ -300,7 +275,7 @@ final class ReadmeExamplesTests: XCTestCase {
     /// so the solver returned before running a single generation.
     func testQuickStartTerminationIsNotMetByStartingPopulations() {
         let populationsMeetingTermination = (0 ..< 1000).filter { _ in
-            let population = (0 ..< ReadmeQuickStart.populationSize).map { _ in ReadmeQuickStart.newElement() }
+            let population = (0 ..< ReadmeQuickStart.populationSize).map { _ in EvaluatedElement(ReadmeQuickStart.newElement()) }
             return ReadmeQuickStart.terminationCheck(0, population)
         }.count
         XCTAssertEqual(populationsMeetingTermination, 0, "Starting populations should not already meet the termination check")
@@ -315,7 +290,7 @@ final class ReadmeExamplesTests: XCTestCase {
         XCTAssertGreaterThan(solver.currentGeneration, 0, "The solver should run at least one generation")
         XCTAssertLessThanOrEqual(solver.currentGeneration, ReadmeQuickStart.maxGenerations)
         XCTAssertEqual(finalPopulation.count, ReadmeQuickStart.populationSize)
-        XCTAssertGreaterThanOrEqual(bestIndividual.fitness(), ReadmeQuickStart.targetFitness)
+        XCTAssertGreaterThanOrEqual(bestIndividual.fitness, ReadmeQuickStart.targetFitness)
     }
 
     func testQuickStartNewElementsHaveValidGenes() {
@@ -329,18 +304,18 @@ final class ReadmeExamplesTests: XCTestCase {
     // MARK: Quick Start operators
 
     func testQuickStartSelectionReturnsMembersOfThePopulation() {
-        let population = (0 ..< 20).map { MyIndividual(genes: [$0]) }
+        let population = (0 ..< 20).map { EvaluatedElement(MyIndividual(genes: [$0])) }
         for _ in 0 ..< 1000 {
             let (first, second) = ReadmeQuickStart.selection(population)
-            XCTAssertTrue(population.contains { $0.genes == first.genes })
-            XCTAssertTrue(population.contains { $0.genes == second.genes })
+            XCTAssertTrue(population.contains { $0.element.genes == first.element.genes })
+            XCTAssertTrue(population.contains { $0.element.genes == second.element.genes })
         }
     }
 
     func testQuickStartSelectionWithSingleIndividualReturnsItTwice() {
-        let (first, second) = ReadmeQuickStart.selection([MyIndividual(genes: [7])])
-        XCTAssertEqual(first.genes, [7])
-        XCTAssertEqual(second.genes, [7])
+        let (first, second) = ReadmeQuickStart.selection([EvaluatedElement(MyIndividual(genes: [7]))])
+        XCTAssertEqual(first.element.genes, [7])
+        XCTAssertEqual(second.element.genes, [7])
     }
 
     func testQuickStartCrossoverTakesEachGeneFromOneOfTheParents() {
@@ -393,7 +368,7 @@ final class ReadmeExamplesTests: XCTestCase {
         let bestFitnessPerGeneration = [5, 5, 6, 6, 6, 6]
 
         let results = bestFitnessPerGeneration.enumerated().map { generation, best in
-            check(generation, [MyIndividual(genes: [best])])
+            check(generation, [EvaluatedElement(MyIndividual(genes: [best]))])
         }
 
         // 5 (first), 5 (1 without improvement), 6 (improved), then 1, 2, 3.
@@ -427,11 +402,11 @@ final class ReadmeExamplesTests: XCTestCase {
         let check = stallTermination(patience: 3)
         // The first run improves until generation 4.
         for (generation, best) in [1, 2, 3, 4, 5, 5].enumerated() {
-            _ = check(generation, [MyIndividual(genes: [best])])
+            _ = check(generation, [EvaluatedElement(MyIndividual(genes: [best]))])
         }
 
         // The second run starts lower and never improves.
-        let secondRun = (0 ..< 4).map { check($0, [MyIndividual(genes: [1])]) }
+        let secondRun = (0 ..< 4).map { check($0, [EvaluatedElement(MyIndividual(genes: [1]))]) }
 
         XCTAssertEqual(secondRun, [false, false, false, true])
     }
@@ -444,7 +419,7 @@ final class ReadmeExamplesTests: XCTestCase {
         let bestFitnessPerGeneration = [5, 5, 6, 6, 6, 6, 6]
 
         for (generation, best) in bestFitnessPerGeneration.enumerated() {
-            let population = [MyIndividual(genes: [best])]
+            let population = [EvaluatedElement(MyIndividual(genes: [best]))]
             let expected = once(generation, population)
             XCTAssertEqual(twice(generation, population), expected, "First call, generation \(generation)")
             XCTAssertEqual(twice(generation, population), expected, "Second call, generation \(generation)")
@@ -491,33 +466,6 @@ final class ReadmeExamplesTests: XCTestCase {
         XCTAssertEqual(solver.currentGeneration, 8)
     }
 
-    // MARK: Expensive fitness tip
-
-    func testExpensiveIndividualReturnsTheFitnessComputedAtCreation() {
-        XCTAssertEqual(ExpensiveIndividual(genes: [1, 2, 3]).fitness(), 6)
-        XCTAssertEqual(ExpensiveIndividual(genes: []).fitness(), 0)
-    }
-
-    func testExpensiveIndividualWorksWithTheSolver() {
-        // A crossover rate of 1 applies crossover to every pair, so every
-        // child combines two individuals and the result doesn't depend on
-        // random numbers.
-        var solver = GeneticSolver<ExpensiveIndividual>(
-            populationSize: 4,
-            crossoverRate: 1,
-            selectionOperator: { ($0[0], $0[1]) },
-            crossoverOperator: { [ExpensiveIndividual(genes: $0.genes + $1.genes)] },
-            mutationOperator: { $0 },
-            replacementOperator: { _, new in new },
-            terminationCheck: { _, _ in false },
-            newElement: { ExpensiveIndividual(genes: [1]) }
-        )
-
-        _ = solver.solve(maxGenerations: 1)
-
-        XCTAssertEqual(solver.currentPopulation.map { $0.fitness() }, [2, 2, 2, 2])
-    }
-
     // MARK: Quick Start, Option B
 
     /// Option B used to return the best candidate as both parents, so
@@ -525,11 +473,11 @@ final class ReadmeExamplesTests: XCTestCase {
     /// tournament selection, which picks each parent separately.
     func testOptionBUsesTheDefaultSelectionWithIndependentParents() {
         // Two different individuals with the same fitness.
-        let population = [MyIndividual(genes: [0, 5]), MyIndividual(genes: [5, 0])]
+        let population = [MyIndividual(genes: [0, 5]), MyIndividual(genes: [5, 0])].map(EvaluatedElement.init)
 
         let differentPairs = (0 ..< 1000).filter { _ in
             let (first, second) = MyGeneticOperators.selectionOperator(population: population)
-            return first.genes != second.genes
+            return first.element.genes != second.element.genes
         }.count
 
         XCTAssertGreaterThan(differentPairs, 0)
@@ -549,7 +497,7 @@ final class ReadmeExamplesTests: XCTestCase {
 
         // Across 2,000 runs the best fitness after 100 generations was never
         // below 952 (out of 1000).
-        XCTAssertGreaterThanOrEqual(bestIndividual.fitness(), 940)
+        XCTAssertGreaterThanOrEqual(bestIndividual.fitness, 940)
     }
 
     func testOptionBSolverRunsUntilFixedGenerationTermination() {
@@ -566,7 +514,7 @@ final class ReadmeExamplesTests: XCTestCase {
         XCTAssertEqual(solver.currentGeneration, 100)
         XCTAssertTrue(solver.isTerminated)
         XCTAssertEqual(finalPopulation.count, 50)
-        XCTAssertTrue(finalPopulation.allSatisfy { $0.genes.count == 10 && $0.genes.allSatisfy { (0 ... 100).contains($0) } })
+        XCTAssertTrue(finalPopulation.allSatisfy { $0.element.genes.count == 10 && $0.element.genes.allSatisfy { (0 ... 100).contains($0) } })
     }
 
     // MARK: Roulette Wheel Selection
@@ -574,36 +522,36 @@ final class ReadmeExamplesTests: XCTestCase {
     /// The README version crashed here: with a total fitness of 0,
     /// `Double.random(in: 0 ..< 0)` traps.
     func testRouletteWithAllZeroFitnessPicksAtRandom() {
-        let population = [MyIndividual(genes: [0]), MyIndividual(genes: [0, 0]), MyIndividual(genes: [0, 0, 0])]
+        let population = [MyIndividual(genes: [0]), MyIndividual(genes: [0, 0]), MyIndividual(genes: [0, 0, 0])].map(EvaluatedElement.init)
 
         var pickedGeneCounts = Set<Int>()
         for _ in 0 ..< 1000 {
             let (first, second) = ReadmeRoulette.rouletteSelection(population)
-            pickedGeneCounts.insert(first.genes.count)
-            pickedGeneCounts.insert(second.genes.count)
+            pickedGeneCounts.insert(first.element.genes.count)
+            pickedGeneCounts.insert(second.element.genes.count)
         }
 
         XCTAssertEqual(pickedGeneCounts, [1, 2, 3], "Every individual should be picked at some point")
     }
 
     func testRouletteNeverPicksZeroFitnessWhenAnotherIndividualIsPositive() {
-        let population = [MyIndividual(genes: [0]), MyIndividual(genes: [5]), MyIndividual(genes: [0, 0])]
+        let population = [MyIndividual(genes: [0]), MyIndividual(genes: [5]), MyIndividual(genes: [0, 0])].map(EvaluatedElement.init)
 
         for _ in 0 ..< 1000 {
             let (first, second) = ReadmeRoulette.rouletteSelection(population)
-            XCTAssertEqual(first.genes, [5])
-            XCTAssertEqual(second.genes, [5])
+            XCTAssertEqual(first.element.genes, [5])
+            XCTAssertEqual(second.element.genes, [5])
         }
     }
 
     func testRoulettePicksInProportionToFitness() {
-        let population = [MyIndividual(genes: [1]), MyIndividual(genes: [3])]
+        let population = [MyIndividual(genes: [1]), MyIndividual(genes: [3])].map(EvaluatedElement.init)
         let picks = 10000
 
         var strongPicks = 0
         for _ in 0 ..< picks / 2 {
             let (first, second) = ReadmeRoulette.rouletteSelection(population)
-            strongPicks += [first, second].filter { $0.genes == [3] }.count
+            strongPicks += [first, second].filter { $0.element.genes == [3] }.count
         }
 
         // Expected share 0.75 with a standard deviation of about 0.0043, so
@@ -614,10 +562,10 @@ final class ReadmeExamplesTests: XCTestCase {
     }
 
     func testRouletteWithSingleIndividualReturnsItTwice() {
-        let (first, second) = ReadmeRoulette.rouletteSelection([MyIndividual(genes: [4])])
+        let (first, second) = ReadmeRoulette.rouletteSelection([EvaluatedElement(MyIndividual(genes: [4]))])
 
-        XCTAssertEqual(first.genes, [4])
-        XCTAssertEqual(second.genes, [4])
+        XCTAssertEqual(first.element.genes, [4])
+        XCTAssertEqual(second.element.genes, [4])
     }
 
     /// The case from the review: a population where every individual has
@@ -653,18 +601,18 @@ final class ReadmeExamplesTests: XCTestCase {
             crossoverOperator: ReadmeQuickStart.crossover,
             mutationOperator: ReadmeQuickStart.mutation,
             replacementOperator: GeneticSolver.elitistReplacement(eliteCount: 2), // Keep the 2 fittest
-            terminationCheck: { _, population in population.contains { $0.fitness() >= 950 } },
+            terminationCheck: { _, population in population.contains { $0.fitness >= 950 } },
             newElement: { MyIndividual(genes: (0 ..< 10).map { _ in Int.random(in: 0 ... 100) }) }
         )
 
-        var bestFitnesses = [solver.bestElement.fitness()]
+        var bestFitnesses = [solver.bestElement.fitness]
         while solver.currentGeneration < 200, !solver.step() {
-            bestFitnesses.append(solver.bestElement.fitness())
+            bestFitnesses.append(solver.bestElement.fitness)
         }
-        bestFitnesses.append(solver.bestElement.fitness())
+        bestFitnesses.append(solver.bestElement.fitness)
 
         XCTAssertEqual(bestFitnesses, bestFitnesses.sorted(), "The best fitness must never go down")
-        XCTAssertGreaterThanOrEqual(solver.bestElement.fitness(), 950)
+        XCTAssertGreaterThanOrEqual(solver.bestElement.fitness, 950)
         XCTAssertEqual(solver.currentPopulation.count, 50)
     }
 
@@ -761,13 +709,13 @@ final class ReadmeExamplesTests: XCTestCase {
                 return mutant
             },
             replacementOperator: { _, new in new },
-            terminationCheck: { _, population in population.contains { $0.fitness() >= 950 } },
+            terminationCheck: { _, population in population.contains { $0.fitness >= 950 } },
             newElement: { MyIndividual(genes: (0 ..< 10).map { _ in Int.random(in: 0 ... 100, using: &random) }) }
         )
         solver.randomNumberGenerator = SeededRandomNumberGenerator(seed: 2) // For the solver's own decisions
 
         solver.solve(maxGenerations: 200) // The same result on every run
 
-        return (solver.currentPopulation.map(\.genes), solver.currentGeneration, solver.bestElement.fitness())
+        return (solver.currentPopulation.map(\.element.genes), solver.currentGeneration, solver.bestElement.fitness)
     }
 }

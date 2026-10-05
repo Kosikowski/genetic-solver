@@ -47,7 +47,7 @@ final class TerminationCheckTests: XCTestCase {
 
         solver.step()
 
-        XCTAssertEqual(recorder.populations.last, solver.currentPopulation.map(\.id))
+        XCTAssertEqual(recorder.populations.last, solver.currentPopulation.map(\.element.id))
         XCTAssertEqual(recorder.populations.last, [0, 1, 0, 1])
     }
 
@@ -129,7 +129,7 @@ final class TerminationCheckTests: XCTestCase {
     }
 
     func testResetKeepsTheSolverTerminatedWhenTheNewPopulationMeetsTheCheck() {
-        var solver = makeDeterministicSolver(terminationCheck: { _, population in population.contains { $0.id >= 4 } })
+        var solver = makeDeterministicSolver(terminationCheck: { _, population in population.contains { $0.element.id >= 4 } })
         XCTAssertFalse(solver.isTerminated)
 
         solver.reset()
@@ -150,7 +150,7 @@ final class TerminationCheckTests: XCTestCase {
         solver.terminationCheck = recorder.check
 
         XCTAssertEqual(recorder.generations, [2])
-        XCTAssertEqual(recorder.populations, [solver.currentPopulation.map(\.id)])
+        XCTAssertEqual(recorder.populations, [solver.currentPopulation.map(\.element.id)])
     }
 
     func testReplacingTheCheckLetsATerminatedSolverContinue() {
@@ -183,13 +183,13 @@ final class TerminationCheckTests: XCTestCase {
         var solver = makeDeterministicSolver(terminationCheck: recorder.check)
         solver.step()
         solver.step()
-        let populationBefore = solver.currentPopulation.map(\.id)
+        let populationBefore = solver.currentPopulation.map(\.element.id)
 
         XCTAssertFalse(solver.checkTermination())
 
         XCTAssertEqual(recorder.generations, [0, 1, 2, 2])
         XCTAssertEqual(recorder.populations.last, populationBefore)
-        XCTAssertEqual(solver.currentPopulation.map(\.id), populationBefore, "Runs no generation")
+        XCTAssertEqual(solver.currentPopulation.map(\.element.id), populationBefore, "Runs no generation")
         XCTAssertEqual(solver.currentGeneration, 2)
         XCTAssertFalse(solver.isTerminated)
     }
@@ -262,7 +262,7 @@ final class TerminationCheckTests: XCTestCase {
         // The deterministic solver never changes fitness, so the best fitness
         // stops improving right after the initial population.
         var solver = makeDeterministicSolver(terminationCheck: { _, population in
-            let currentBest = population.map { $0.fitness() }.max() ?? 0
+            let currentBest = population.map(\.fitness).max() ?? 0
             if currentBest > bestSoFar {
                 bestSoFar = currentBest
                 generationsWithoutImprovement = 0

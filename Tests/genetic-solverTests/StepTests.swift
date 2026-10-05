@@ -50,7 +50,7 @@ final class StepTests: XCTestCase {
 
         solver.step()
 
-        XCTAssertEqual(solver.currentPopulation.map(\.id), [1000, 1001, 1000, 1001])
+        XCTAssertEqual(solver.currentPopulation.map(\.element.id), [1000, 1001, 1000, 1001])
     }
 
     /// Each new individual gets its own mutation decision. The total alone
@@ -90,7 +90,7 @@ final class StepTests: XCTestCase {
         solver.mutationRate = 1
         solver.mutationOperator = { TestIndividual(gene: $0.gene, id: $0.id + 1000) }
         solver.replacementOperator = { old, new in
-            received = (old.map(\.id), new.map(\.id))
+            received = (old.map(\.element.id), new.map(\.element.id))
             return new
         }
 
@@ -106,7 +106,7 @@ final class StepTests: XCTestCase {
 
         solver.step()
 
-        XCTAssertEqual(solver.currentPopulation.map(\.id), [0, 1, 2, 3, 0, 1, 0, 1])
+        XCTAssertEqual(solver.currentPopulation.map(\.element.id), [0, 1, 2, 3, 0, 1, 0, 1])
     }
 
     // MARK: Population size
@@ -160,7 +160,7 @@ final class StepTests: XCTestCase {
         var solver = makeDeterministicSolver(populationSize: populationSize)
         // The parents are always new, unmutated individuals, so a marked
         // individual in the next population was mutated in that generation.
-        solver.selectionOperator = { _ in (TestIndividual(gene: .zero, id: 0), TestIndividual(gene: .zero, id: 1)) }
+        solver.selectionOperator = { _ in (EvaluatedElement(TestIndividual(gene: .zero, id: 0)), EvaluatedElement(TestIndividual(gene: .zero, id: 1))) }
         solver.mutationRate = 0.3
         solver.mutationOperator = { TestIndividual(gene: $0.gene, id: -1) }
         solver.randomNumberGenerator = SeededRandomNumberGenerator(seed: seed)
@@ -169,7 +169,7 @@ final class StepTests: XCTestCase {
         var perPosition = Array(repeating: 0, count: populationSize)
         for _ in 0 ..< generations {
             solver.step()
-            let mutated = solver.currentPopulation.map { $0.id == -1 }
+            let mutated = solver.currentPopulation.map { $0.element.id == -1 }
             perGeneration.append(mutated.filter { $0 }.count)
             for (position, isMutated) in mutated.enumerated() where isMutated {
                 perPosition[position] += 1

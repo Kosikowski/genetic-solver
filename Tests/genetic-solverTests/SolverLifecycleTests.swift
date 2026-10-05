@@ -17,7 +17,7 @@ final class SolverLifecycleTests: XCTestCase {
         let solver = makeDeterministicSolver(populationSize: 5, factory: factory)
 
         XCTAssertEqual(factory.createdCount, 5)
-        XCTAssertEqual(solver.currentPopulation.map(\.id), [0, 1, 2, 3, 4])
+        XCTAssertEqual(solver.currentPopulation.map(\.element.id), [0, 1, 2, 3, 4])
         XCTAssertEqual(solver.currentGeneration, 0)
     }
 
@@ -30,7 +30,7 @@ final class SolverLifecycleTests: XCTestCase {
         let result = solver.solve(maxGenerations: 1)
 
         XCTAssertEqual(factory.createdCount, 4, "solve should not create a new population")
-        XCTAssertEqual(result.map(\.id), [0, 1, 0, 1])
+        XCTAssertEqual(result.map(\.element.id), [0, 1, 0, 1])
         XCTAssertEqual(solver.currentGeneration, 1)
     }
 
@@ -40,7 +40,7 @@ final class SolverLifecycleTests: XCTestCase {
 
         let result = solver.solve(maxGenerations: 0)
 
-        XCTAssertEqual(result.map(\.id), [0, 1, 2, 3])
+        XCTAssertEqual(result.map(\.element.id), [0, 1, 2, 3])
         XCTAssertEqual(solver.currentGeneration, 0)
         XCTAssertEqual(factory.createdCount, 4)
     }
@@ -51,7 +51,7 @@ final class SolverLifecycleTests: XCTestCase {
 
         let result = solver.solve(maxGenerations: -5)
 
-        XCTAssertEqual(result.map(\.id), [0, 1, 2, 3])
+        XCTAssertEqual(result.map(\.element.id), [0, 1, 2, 3])
         XCTAssertEqual(solver.currentGeneration, 0)
     }
 
@@ -65,7 +65,7 @@ final class SolverLifecycleTests: XCTestCase {
         let result = solver.solve(maxGenerations: 5)
 
         XCTAssertEqual(solver.currentGeneration, 5, "maxGenerations caps the total generation count")
-        XCTAssertEqual(result.map(\.id), [0, 1, 0, 1])
+        XCTAssertEqual(result.map(\.element.id), [0, 1, 0, 1])
         XCTAssertEqual(factory.createdCount, 4)
     }
 
@@ -136,7 +136,7 @@ final class SolverLifecycleTests: XCTestCase {
         solver.reset()
 
         XCTAssertEqual(solver.currentGeneration, 0)
-        XCTAssertEqual(solver.currentPopulation.map(\.id), [4, 5, 6, 7])
+        XCTAssertEqual(solver.currentPopulation.map(\.element.id), [4, 5, 6, 7])
         XCTAssertEqual(factory.createdCount, 8)
     }
 
@@ -156,7 +156,7 @@ final class SolverLifecycleTests: XCTestCase {
         solver.newElement = { TestIndividual(gene: .one, id: -1) }
         solver.reset()
 
-        XCTAssertTrue(solver.currentPopulation.allSatisfy { $0.gene == .one && $0.id == -1 })
+        XCTAssertTrue(solver.currentPopulation.allSatisfy { $0.element.gene == .one && $0.element.id == -1 })
     }
 
     func testSolveAfterResetRunsFromGenerationZero() {
@@ -168,7 +168,7 @@ final class SolverLifecycleTests: XCTestCase {
         let result = solver.solve(maxGenerations: 10)
 
         XCTAssertEqual(solver.currentGeneration, 2)
-        XCTAssertEqual(result.map(\.id), [4, 5, 4, 5])
+        XCTAssertEqual(result.map(\.element.id), [4, 5, 4, 5])
     }
 
     // MARK: Copies
@@ -182,9 +182,9 @@ final class SolverLifecycleTests: XCTestCase {
         copy.reset()
 
         XCTAssertEqual(original.currentGeneration, 2)
-        XCTAssertEqual(original.currentPopulation.map(\.id), [0, 1, 0, 1])
+        XCTAssertEqual(original.currentPopulation.map(\.element.id), [0, 1, 0, 1])
         XCTAssertEqual(copy.currentGeneration, 0)
-        XCTAssertEqual(copy.currentPopulation.map(\.id), [4, 5, 6, 7])
+        XCTAssertEqual(copy.currentPopulation.map(\.element.id), [4, 5, 6, 7])
     }
 
     /// Operators are closures, so state they capture is shared by copies.

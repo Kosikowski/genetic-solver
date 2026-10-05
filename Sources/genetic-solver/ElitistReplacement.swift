@@ -13,8 +13,7 @@ public extension GeneticSolver {
     /// fitness never gets worse from one generation to the next, and
     /// `bestElement` is the best individual found so far.
     ///
-    /// Each individual of the current population has its fitness evaluated once
-    /// per generation; the new individuals aren't evaluated. On a tie, the
+    /// It uses the fitness the solver already evaluated. On a tie, the
     /// individual that comes first in the current population is kept. An
     /// `eliteCount` of 0 gives plain generational replacement, and one larger
     /// than either population keeps as many as fit.
@@ -32,11 +31,10 @@ public extension GeneticSolver {
             let keptCount = min(eliteCount, old.count, new.count)
             guard keptCount > 0 else { return new }
 
-            let fitnesses = old.map { $0.fitness() }
             // Fittest first; on a tie, the earlier individual first.
             let ranked = old.indices.sorted { first, second in
-                if fitnesses[first] != fitnesses[second] {
-                    return fitnesses[first] > fitnesses[second]
+                if old[first].fitness != old[second].fitness {
+                    return old[first].fitness > old[second].fitness
                 }
                 return first < second
             }

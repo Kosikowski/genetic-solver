@@ -78,7 +78,7 @@ final class GeneticElementTests: XCTestCase {
         XCTAssertEqual(solver.currentGeneration, 3)
         XCTAssertTrue(solver.isTerminated)
         XCTAssertEqual(solver.currentPopulation.count, 4)
-        XCTAssertGreaterThanOrEqual(solver.bestElement.value, 3, "Elitism keeps the best starting value")
+        XCTAssertGreaterThanOrEqual(solver.bestElement.element.value, 3, "Elitism keeps the best starting value")
     }
 
     /// `GeneticElement` includes the `Fitness` associated type, so code that
@@ -102,6 +102,6 @@ final class GeneticElementTests: XCTestCase {
         _ = solver.solve()
 
         XCTAssertEqual(solver.currentGeneration, 2)
-        XCTAssertTrue(solver.currentPopulation.allSatisfy { (0 ... 9).contains($0.value) })
+        XCTAssertTrue(solver.currentPopulation.allSatisfy { (0 ... 9).contains($0.element.value) })
     }
 }

@@ -18,9 +18,9 @@ public protocol GeneticOperators {
     associatedtype Element: GeneticElement
 
     /// Selects two individuals from the population for reproduction.
-    /// - Parameter population: The current population array.
-    /// - Returns: A tuple containing two selected elements.
-    static func selectionOperator(population: [Element]) -> (Element, Element)
+    /// - Parameter population: The current population, with each individual's fitness.
+    /// - Returns: Two members of the population.
+    static func selectionOperator(population: [EvaluatedElement<Element>]) -> (EvaluatedElement<Element>, EvaluatedElement<Element>)
 
     /// Performs crossover on two parent elements to produce offspring.
     /// - Parameters:
@@ -36,10 +36,10 @@ public protocol GeneticOperators {
 
     /// Replaces elements in the population with new elements.
     /// - Parameters:
-    ///   - old: The current population elements to be replaced.
-    ///   - new: The new elements to insert.
+    ///   - old: The current population, with each individual's fitness.
+    ///   - new: The new individuals, with each one's fitness.
     /// - Returns: The resulting population after replacement.
-    static func replacementOperator(old: [Element], new: [Element]) -> [Element]
+    static func replacementOperator(old: [EvaluatedElement<Element>], new: [EvaluatedElement<Element>]) -> [EvaluatedElement<Element>]
 
     /// Provides a termination condition based on a fixed number of generations.
     /// - Parameter maxGenerations: The maximum number of generations allowed.
@@ -54,11 +54,11 @@ public protocol GeneticOperators {
 public extension GeneticOperators {
     /// Default selection operator implementing tournament selection with a tournament size of 3.
     /// Each parent is the best of three randomly chosen candidates; on a tie, the candidate
-    /// drawn first wins. Each candidate's fitness is evaluated once.
+    /// drawn first wins.
     ///
     /// It uses the system random number generator. For another tournament size or a seeded
     /// generator, use `GeneticSolver.tournamentSelection(tournamentSize:using:)`.
-    static func selectionOperator(population: [Element]) -> (Element, Element) {
+    static func selectionOperator(population: [EvaluatedElement<Element>]) -> (EvaluatedElement<Element>, EvaluatedElement<Element>) {
         var generator = SystemRandomNumberGenerator()
         return tournamentPair(from: population, size: 3, using: &generator)
     }
@@ -74,7 +74,7 @@ public extension GeneticOperators {
     }
 
     /// Default replacement operator that completely replaces the old population with the new one.
-    static func replacementOperator(old _: [Element], new: [Element]) -> [Element] {
+    static func replacementOperator(old _: [EvaluatedElement<Element>], new: [EvaluatedElement<Element>]) -> [EvaluatedElement<Element>] {
         new
     }
 

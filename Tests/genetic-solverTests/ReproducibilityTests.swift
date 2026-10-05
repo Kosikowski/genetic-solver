@@ -135,13 +135,13 @@ final class ReproducibilityTests: XCTestCase {
         var always = makeMarkingSolver(crossoverRate: 0.01, mutationRate: 0.01)
         always.randomNumberGenerator = ConstantGenerator(value: 0)
         always.step()
-        XCTAssertEqual(always.currentPopulation.map(\.id), [1100, 1101, 1100, 1101], "Crossed (+100) and mutated (+1000)")
+        XCTAssertEqual(always.currentPopulation.map(\.element.id), [1100, 1101, 1100, 1101], "Crossed (+100) and mutated (+1000)")
 
         // With one that always returns UInt64.max, even a 99% rate never does.
         var never = makeMarkingSolver(crossoverRate: 0.99, mutationRate: 0.99)
         never.randomNumberGenerator = ConstantGenerator(value: .max)
         never.step()
-        XCTAssertEqual(never.currentPopulation.map(\.id), [0, 1, 0, 1], "Copied parents, not mutated")
+        XCTAssertEqual(never.currentPopulation.map(\.element.id), [0, 1, 0, 1], "Copied parents, not mutated")
     }
 
     func testCopiedSolverMakesTheSameDecisions() {
@@ -153,7 +153,7 @@ final class ReproducibilityTests: XCTestCase {
         for _ in 0 ..< 5 {
             original.step()
             copy.step()
-            XCTAssertEqual(original.currentPopulation.map(\.id), copy.currentPopulation.map(\.id))
+            XCTAssertEqual(original.currentPopulation.map(\.element.id), copy.currentPopulation.map(\.element.id))
         }
     }
 
@@ -168,8 +168,8 @@ final class ReproducibilityTests: XCTestCase {
         for _ in 0 ..< 20 {
             original.step()
             copy.step()
-            originalIDs.append(original.currentPopulation.map(\.id))
-            copyIDs.append(copy.currentPopulation.map(\.id))
+            originalIDs.append(original.currentPopulation.map(\.element.id))
+            copyIDs.append(copy.currentPopulation.map(\.element.id))
         }
 
         // Each generation makes 2 crossover and 4 mutation decisions at 50%,
@@ -197,11 +197,11 @@ final class ReproducibilityTests: XCTestCase {
     /// including the generator of `tournamentSelection(using:)`: the copy
     /// continues the original's sequence instead of repeating it.
     func testCopiedSolverSharesTheGeneratorOfItsSelectionOperator() {
-        let population = (0 ..< 20).map { ScoredIndividual(id: $0, score: $0) }
+        let population = (0 ..< 20).map { EvaluatedElement(ScoredIndividual(id: $0, score: $0)) }
         let reference = GeneticSolver<ScoredIndividual>.tournamentSelection(using: SeededRandomNumberGenerator(seed: 6))
         let firstPair = reference(population)
         let secondPair = reference(population)
-        XCTAssertNotEqual([firstPair.0.id, firstPair.1.id], [secondPair.0.id, secondPair.1.id], "The seed must tell the pairs apart")
+        XCTAssertNotEqual([firstPair.0.element.id, firstPair.1.element.id], [secondPair.0.element.id, secondPair.1.element.id], "The seed must tell the pairs apart")
 
         let original = GeneticSolver<ScoredIndividual>(
             populationSize: 1,
@@ -216,8 +216,8 @@ final class ReproducibilityTests: XCTestCase {
         let fromOriginal = original.selectionOperator(population)
         let fromCopy = copy.selectionOperator(population)
 
-        XCTAssertEqual([fromOriginal.0.id, fromOriginal.1.id], [firstPair.0.id, firstPair.1.id])
-        XCTAssertEqual([fromCopy.0.id, fromCopy.1.id], [secondPair.0.id, secondPair.1.id], "The copy continued the shared sequence")
+        XCTAssertEqual([fromOriginal.0.element.id, fromOriginal.1.element.id], [firstPair.0.element.id, firstPair.1.element.id])
+        XCTAssertEqual([fromCopy.0.element.id, fromCopy.1.element.id], [secondPair.0.element.id, secondPair.1.element.id], "The copy continued the shared sequence")
     }
 
     func testSeededRunsAreReproducible() {
@@ -228,14 +228,14 @@ final class ReproducibilityTests: XCTestCase {
     // MARK: tournamentSelection
 
     func testTournamentSelectionWithTheSameSeedPicksTheSameParents() {
-        let population = (0 ..< 20).map { ScoredIndividual(id: $0, score: $0 % 7) }
+        let population = (0 ..< 20).map { EvaluatedElement(ScoredIndividual(id: $0, score: $0 % 7)) }
         let first = GeneticSolver<ScoredIndividual>.tournamentSelection(using: SeededRandomNumberGenerator(seed: 3))
         let second = GeneticSolver<ScoredIndividual>.tournamentSelection(using: SeededRandomNumberGenerator(seed: 3))
 
         for _ in 0 ..< 100 {
             let (a1, b1) = first(population)
             let (a2, b2) = second(population)
-            XCTAssertEqual([a1.id, b1.id], [a2.id, b2.id])
+            XCTAssertEqual([a1.element.id, b1.element.id], [a2.element.id, b2.element.id])
         }
     }
 
@@ -243,7 +243,7 @@ final class ReproducibilityTests: XCTestCase {
     /// so the operator picks exactly what the helper picks from the same
     /// sequence of random numbers.
     func testTournamentSelectionPicksWhatTournamentPairPicks() {
-        let population = (0 ..< 30).map { ScoredIndividual(id: $0, score: $0 % 11) }
+        let population = (0 ..< 30).map { EvaluatedElement(ScoredIndividual(id: $0, score: $0 % 11)) }
 
         for size in [1, 2, 3, 7] {
             let select = GeneticSolver<ScoredIndividual>.tournamentSelection(
@@ -254,7 +254,7 @@ final class ReproducibilityTests: XCTestCase {
             for _ in 0 ..< 50 {
                 let fromOperator = select(population)
                 let fromHelper = tournamentPair(from: population, size: size, using: &generator)
-                XCTAssertEqual([fromOperator.0.id, fromOperator.1.id], [fromHelper.0.id, fromHelper.1.id], "size \(size)")
+                XCTAssertEqual([fromOperator.0.element.id, fromOperator.1.element.id], [fromHelper.0.element.id, fromHelper.1.element.id], "size \(size)")
             }
         }
     }
@@ -273,8 +273,8 @@ final class ReproducibilityTests: XCTestCase {
     }
 
     func testTournamentTieGoesToTheIndividualDrawnFirst() {
-        let first = ScoredIndividual(id: 0, score: 5)
-        let second = ScoredIndividual(id: 1, score: 5)
+        let first = EvaluatedElement(ScoredIndividual(id: 0, score: 5))
+        let second = EvaluatedElement(ScoredIndividual(id: 1, score: 5))
 
         // Draws: index 0 then 1 for the first parent, 1 then 0 for the second.
         let select = GeneticSolver<ScoredIndividual>.tournamentSelection(
@@ -283,13 +283,13 @@ final class ReproducibilityTests: XCTestCase {
         )
         let (parent1, parent2) = select([first, second])
 
-        XCTAssertEqual(parent1.id, 0)
-        XCTAssertEqual(parent2.id, 1)
+        XCTAssertEqual(parent1.element.id, 0)
+        XCTAssertEqual(parent2.element.id, 1)
     }
 
     func testTournamentFitterIndividualWinsWhicheverIsDrawnFirst() {
-        let weak = ScoredIndividual(id: 0, score: 1)
-        let strong = ScoredIndividual(id: 1, score: 2)
+        let weak = EvaluatedElement(ScoredIndividual(id: 0, score: 1))
+        let strong = EvaluatedElement(ScoredIndividual(id: 1, score: 2))
 
         let select = GeneticSolver<ScoredIndividual>.tournamentSelection(
             tournamentSize: 2,
@@ -297,29 +297,32 @@ final class ReproducibilityTests: XCTestCase {
         )
         let (parent1, parent2) = select([weak, strong])
 
-        XCTAssertEqual([parent1.id, parent2.id], [1, 1])
+        XCTAssertEqual([parent1.element.id, parent2.element.id], [1, 1])
     }
 
-    func testTournamentEvaluatesEachDrawnIndividualOnce() {
+    /// The population comes with each individual's fitness, so tournaments
+    /// call `fitness()` for none of the drawn individuals.
+    func testTournamentUsesTheStoredFitness() {
         let counter = FitnessCallCounter()
-        let population = (0 ..< 10).map { ScoredIndividual(id: $0, score: $0, counter: counter) }
+        let population = (0 ..< 10).map { EvaluatedElement(ScoredIndividual(id: $0, score: $0, counter: counter)) }
+        counter.calls = 0
 
         _ = GeneticSolver<ScoredIndividual>.tournamentSelection(tournamentSize: 4)(population)
 
-        XCTAssertEqual(counter.calls, 8, "Two tournaments of four")
+        XCTAssertEqual(counter.calls, 0)
     }
 
     func testTournamentSelectionReturnsMembersOfThePopulation() {
-        let population = (0 ..< 5).map { ScoredIndividual(id: $0, score: 1) }
+        let population = (0 ..< 5).map { EvaluatedElement(ScoredIndividual(id: $0, score: 1)) }
         let select = GeneticSolver<ScoredIndividual>.tournamentSelection(tournamentSize: 2)
 
         for _ in 0 ..< 200 {
             let (first, second) = select(population)
-            XCTAssertTrue((0 ..< 5).contains(first.id))
-            XCTAssertTrue((0 ..< 5).contains(second.id))
+            XCTAssertTrue((0 ..< 5).contains(first.element.id))
+            XCTAssertTrue((0 ..< 5).contains(second.element.id))
         }
-        let (only1, only2) = select([ScoredIndividual(id: 9, score: 0)])
-        XCTAssertEqual([only1.id, only2.id], [9, 9])
+        let (only1, only2) = select([EvaluatedElement(ScoredIndividual(id: 9, score: 0))])
+        XCTAssertEqual([only1.element.id, only2.element.id], [9, 9])
     }
 
     // MARK: Helpers
@@ -359,10 +362,10 @@ final class ReproducibilityTests: XCTestCase {
         )
         solver.randomNumberGenerator = SeededRandomNumberGenerator(seed: seed &+ 2)
 
-        var scores = [solver.currentPopulation.map(\.score)]
+        var scores = [solver.currentPopulation.map(\.element.score)]
         for _ in 0 ..< 30 {
             solver.step()
-            scores.append(solver.currentPopulation.map(\.score))
+            scores.append(solver.currentPopulation.map(\.element.score))
         }
         return scores
     }
@@ -370,8 +373,8 @@ final class ReproducibilityTests: XCTestCase {
     /// The share of 10,000 picks won by the weaker of two individuals.
     /// `nil` uses the default `GeneticOperators` selection.
     private func weakShare(tournamentSize: Int?) -> Double {
-        let weak = ScoredIndividual(id: 0, score: 0)
-        let strong = ScoredIndividual(id: 1, score: 1)
+        let weak = EvaluatedElement(ScoredIndividual(id: 0, score: 0))
+        let strong = EvaluatedElement(ScoredIndividual(id: 1, score: 1))
         let select: SelectionOperator<ScoredIndividual> = if let tournamentSize {
             GeneticSolver.tournamentSelection(tournamentSize: tournamentSize, using: SeededRandomNumberGenerator(seed: 99))
         } else {
@@ -380,7 +383,7 @@ final class ReproducibilityTests: XCTestCase {
         var weakPicks = 0
         for _ in 0 ..< 5000 {
             let (first, second) = select([weak, strong])
-            weakPicks += [first, second].filter { $0.id == weak.id }.count
+            weakPicks += [first, second].filter { $0.element.id == weak.element.id }.count
         }
         return Double(weakPicks) / 10000
     }

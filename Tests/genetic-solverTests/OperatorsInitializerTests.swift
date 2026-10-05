@@ -24,7 +24,11 @@ private enum RecordingOperators: GeneticOperators {
         nextID = 0
     }
 
-    static func selectionOperator(population: [TestIndividual]) -> (TestIndividual, TestIndividual) {
+    static func selectionOperator(
+        population: [EvaluatedElement<TestIndividual>]
+    )
+        -> (EvaluatedElement<TestIndividual>, EvaluatedElement<TestIndividual>)
+    {
         calls.append("selection")
         return (population[0], population[1])
     }
@@ -39,7 +43,12 @@ private enum RecordingOperators: GeneticOperators {
         return TestIndividual(gene: element.gene, id: element.id + 100)
     }
 
-    static func replacementOperator(old _: [TestIndividual], new: [TestIndividual]) -> [TestIndividual] {
+    static func replacementOperator(
+        old _: [EvaluatedElement<TestIndividual>],
+        new: [EvaluatedElement<TestIndividual>]
+    )
+        -> [EvaluatedElement<TestIndividual>]
+    {
         calls.append("replacement")
         return new
     }
@@ -67,6 +76,39 @@ private enum NewElementOnlyOperators: GeneticOperators {
     }
 }
 
+// MARK: - Version010Operators
+
+/// Written for 0.1.0: selection, replacement and the termination factory use
+/// plain elements. Since the requirements use `EvaluatedElement`, these
+/// methods no longer match them: they still compile, but the solver uses
+/// the default implementations instead, as the CHANGELOG warns.
+private enum Version010Operators: GeneticOperators {
+    // MARK: Static Properties
+
+    static var oldMethodCalls = 0
+
+    // MARK: Static Functions
+
+    static func selectionOperator(population: [TestIndividual]) -> (TestIndividual, TestIndividual) {
+        oldMethodCalls += 1
+        return (population[0], population[0])
+    }
+
+    static func replacementOperator(old: [TestIndividual], new _: [TestIndividual]) -> [TestIndividual] {
+        oldMethodCalls += 1
+        return old
+    }
+
+    static func fixedGenerationTermination(maxGenerations _: Int) -> (Int, [TestIndividual]) -> Bool {
+        oldMethodCalls += 1
+        return { _, _ in true }
+    }
+
+    static func newElement() -> TestIndividual {
+        TestIndividual(gene: .zero, id: 0)
+    }
+}
+
 // MARK: - OperatorsInitializerTests
 
 final class OperatorsInitializerTests: XCTestCase {
@@ -88,7 +130,7 @@ final class OperatorsInitializerTests: XCTestCase {
         )
 
         XCTAssertEqual(RecordingOperators.calls, ["newElement", "newElement"])
-        XCTAssertEqual(solver.currentPopulation.map(\.id), [0, 1])
+        XCTAssertEqual(solver.currentPopulation.map(\.element.id), [0, 1])
     }
 
     func testStepUsesTheOperatorsOfTheType() {
@@ -104,7 +146,7 @@ final class OperatorsInitializerTests: XCTestCase {
         solver.step()
 
         XCTAssertEqual(RecordingOperators.calls, ["selection", "crossover", "mutation", "mutation", "replacement"])
-        XCTAssertEqual(solver.currentPopulation.map(\.id), [110, 111])
+        XCTAssertEqual(solver.currentPopulation.map(\.element.id), [110, 111])
     }
 
     func testResetUsesNewElementOfTheType() {
@@ -116,7 +158,7 @@ final class OperatorsInitializerTests: XCTestCase {
 
         solver.reset()
 
-        XCTAssertEqual(solver.currentPopulation.map(\.id), [2, 3])
+        XCTAssertEqual(solver.currentPopulation.map(\.element.id), [2, 3])
     }
 
     func testInitPassesTheParametersThrough() {
@@ -188,7 +230,7 @@ final class OperatorsInitializerTests: XCTestCase {
             operators: NewElementOnlyOperators.self,
             terminationCheck: { _, _ in false }
         )
-        let initialIDs = Set(solver.currentPopulation.map(\.id))
+        let initialIDs = Set(solver.currentPopulation.map(\.element.id))
 
         _ = solver.solve(maxGenerations: 5)
 
@@ -197,8 +239,25 @@ final class OperatorsInitializerTests: XCTestCase {
         // individual is still one of the starting ones.
         XCTAssertEqual(solver.currentGeneration, 5)
         XCTAssertEqual(solver.currentPopulation.count, 6)
-        XCTAssertTrue(solver.currentPopulation.allSatisfy { initialIDs.contains($0.id) })
+        XCTAssertTrue(solver.currentPopulation.allSatisfy { initialIDs.contains($0.element.id) })
         XCTAssertEqual(NewElementOnlyOperators.nextID, 6, "Only init should create individuals")
+    }
+
+    /// Pins down the CHANGELOG's upgrade note: an operators type written for
+    /// 0.1.0 still compiles, but its selection, replacement and termination
+    /// methods aren't called; the defaults are.
+    func testMethodsWithThe010TypesAreNoLongerCalled() {
+        Version010Operators.oldMethodCalls = 0
+        var solver = GeneticSolver(
+            populationSize: 4,
+            operators: Version010Operators.self,
+            terminationCheck: Version010Operators.fixedGenerationTermination(maxGenerations: 2)
+        )
+
+        solver.solve(maxGenerations: 10)
+
+        XCTAssertEqual(solver.currentGeneration, 2, "The default fixedGenerationTermination stopped the run")
+        XCTAssertEqual(Version010Operators.oldMethodCalls, 0)
     }
 
     func testOperatorsCanBeReplacedAfterInit() {
@@ -215,6 +274,6 @@ final class OperatorsInitializerTests: XCTestCase {
         solver.step()
 
         XCTAssertEqual(RecordingOperators.calls, ["selection", "replacement"])
-        XCTAssertEqual(solver.currentPopulation.map(\.id), [1000, 1001])
+        XCTAssertEqual(solver.currentPopulation.map(\.element.id), [1000, 1001])
     }
 }

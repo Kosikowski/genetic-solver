@@ -17,17 +17,18 @@ final class ElitismTests: XCTestCase {
 
         let next = elitist(2)(old, new)
 
-        XCTAssertEqual(next.map(\.id), [2, 0, 10, 11], "The two fittest old ones, then the first new ones")
+        XCTAssertEqual(next.map(\.element.id), [2, 0, 10, 11], "The two fittest old ones, then the first new ones")
     }
 
     func testZeroEliteCountReturnsTheNewIndividualsWithoutEvaluatingFitness() {
         let counter = FitnessCallCounter()
         let old = individuals(scores: [5, 1], counter: counter)
         let new = individuals(scores: [0, 0], firstID: 10, counter: counter)
+        counter.calls = 0
 
         let next = elitist(0)(old, new)
 
-        XCTAssertEqual(next.map(\.id), [10, 11])
+        XCTAssertEqual(next.map(\.element.id), [10, 11])
         XCTAssertEqual(counter.calls, 0)
     }
 
@@ -37,7 +38,7 @@ final class ElitismTests: XCTestCase {
 
         let next = elitist(5)(old, new)
 
-        XCTAssertEqual(next.map(\.id), [1, 0, 10, 11])
+        XCTAssertEqual(next.map(\.element.id), [1, 0, 10, 11])
     }
 
     func testEliteCountAtLeastTheNewCountReturnsOnlyTheElite() {
@@ -46,7 +47,7 @@ final class ElitismTests: XCTestCase {
 
         let next = elitist(3)(old, new)
 
-        XCTAssertEqual(next.map(\.id), [1, 2], "Only as many as there are new individuals")
+        XCTAssertEqual(next.map(\.element.id), [1, 2], "Only as many as there are new individuals")
     }
 
     func testTiesKeepTheEarlierIndividual() {
@@ -55,25 +56,27 @@ final class ElitismTests: XCTestCase {
 
         let next = elitist(2)(old, new)
 
-        XCTAssertEqual(next.map(\.id), [0, 1, 10])
+        XCTAssertEqual(next.map(\.element.id), [0, 1, 10])
     }
 
-    func testEvaluatesEachCurrentIndividualOnceAndNoNewOnes() {
-        let oldCounter = FitnessCallCounter()
-        let newCounter = FitnessCallCounter()
-        let old = individuals(scores: [3, 1, 2, 5, 4], counter: oldCounter)
-        let new = individuals(scores: [0, 0, 0, 0, 0], firstID: 10, counter: newCounter)
+    /// The individuals come with their fitness, so ranking them calls
+    /// `fitness()` for none of them.
+    func testUsesTheStoredFitnessWithoutEvaluatingAgain() {
+        let counter = FitnessCallCounter()
+        let old = individuals(scores: [3, 1, 2, 5, 4], counter: counter)
+        let new = individuals(scores: [0, 0, 0, 0, 0], firstID: 10, counter: counter)
+        counter.calls = 0
 
-        _ = elitist(2)(old, new)
+        let next = elitist(2)(old, new)
 
-        XCTAssertEqual(oldCounter.calls, 5)
-        XCTAssertEqual(newCounter.calls, 0)
+        XCTAssertEqual(next.map(\.element.id), [3, 4, 10, 11, 12])
+        XCTAssertEqual(counter.calls, 0)
     }
 
     func testEmptyPopulations() {
         let some = individuals(scores: [1, 2])
 
-        XCTAssertEqual(elitist(2)([], some).map(\.id), [0, 1])
+        XCTAssertEqual(elitist(2)([], some).map(\.element.id), [0, 1])
         XCTAssertTrue(elitist(2)(some, []).isEmpty)
         XCTAssertTrue(elitist(2)([], []).isEmpty)
     }
@@ -106,8 +109,8 @@ final class ElitismTests: XCTestCase {
         withoutElitism.step()
         withElitism.step()
 
-        XCTAssertEqual(withoutElitism.bestElement.score, 0)
-        XCTAssertEqual(withElitism.bestElement.score, 9)
+        XCTAssertEqual(withoutElitism.bestElement.element.score, 0)
+        XCTAssertEqual(withElitism.bestElement.element.score, 9)
         XCTAssertEqual(withElitism.currentPopulation.count, 4)
     }
 
@@ -130,10 +133,10 @@ final class ElitismTests: XCTestCase {
             newElement: random
         )
 
-        var bestScores = [solver.bestElement.score]
+        var bestScores = [solver.bestElement.element.score]
         for _ in 0 ..< 200 {
             solver.step()
-            bestScores.append(solver.bestElement.score)
+            bestScores.append(solver.bestElement.element.score)
         }
 
         XCTAssertEqual(bestScores, bestScores.sorted(), "The best score must never go down")
@@ -144,29 +147,30 @@ final class ElitismTests: XCTestCase {
     func testBestElementIsTheFittestOfTheCurrentPopulation() {
         let solver = makeSolver(scores: [3, 8, 1, 5])
 
-        XCTAssertEqual(solver.bestElement.id, 1)
+        XCTAssertEqual(solver.bestElement.element.id, 1)
     }
 
     func testBestElementOnATieIsTheFirst() {
         let solver = makeSolver(scores: [2, 6, 6, 1])
 
-        XCTAssertEqual(solver.bestElement.id, 1)
+        XCTAssertEqual(solver.bestElement.element.id, 1)
     }
 
     func testBestElementOfASingleIndividual() {
         let solver = makeSolver(scores: [4])
 
-        XCTAssertEqual(solver.bestElement.id, 0)
+        XCTAssertEqual(solver.bestElement.element.id, 0)
     }
 
-    func testBestElementEvaluatesEachIndividualOnce() {
+    func testBestElementUsesTheStoredFitness() {
         let counter = FitnessCallCounter()
         let solver = makeSolver(scores: [3, 8, 1, 5], counter: counter)
-        counter.calls = 0
+        XCTAssertEqual(counter.calls, 4, "Each starting individual is evaluated once")
 
-        _ = solver.bestElement
+        let best = solver.bestElement
 
-        XCTAssertEqual(counter.calls, 4)
+        XCTAssertEqual(best.fitness, 8)
+        XCTAssertEqual(counter.calls, 4, "bestElement evaluates nothing")
     }
 
     // MARK: Helpers
@@ -175,13 +179,20 @@ final class ElitismTests: XCTestCase {
         GeneticSolver<ScoredIndividual>.elitistReplacement(eliteCount: eliteCount)
     }
 
-    private func individuals(scores: [Int], firstID: Int = 0, counter: FitnessCallCounter = FitnessCallCounter()) -> [ScoredIndividual] {
-        scores.enumerated().map { ScoredIndividual(id: firstID + $0.offset, score: $0.element, counter: counter) }
+    /// Individuals with the given scores, evaluated (one `fitness()` call each).
+    private func individuals(
+        scores: [Int],
+        firstID: Int = 0,
+        counter: FitnessCallCounter = FitnessCallCounter()
+    )
+        -> [EvaluatedElement<ScoredIndividual>]
+    {
+        scores.enumerated().map { EvaluatedElement(ScoredIndividual(id: firstID + $0.offset, score: $0.element, counter: counter)) }
     }
 
     /// A solver whose starting population has the given scores, in order.
     private func makeSolver(scores: [Int], counter: FitnessCallCounter = FitnessCallCounter()) -> GeneticSolver<ScoredIndividual> {
-        var remaining = individuals(scores: scores, counter: counter)[...]
+        var remaining = scores.enumerated().map { ScoredIndividual(id: $0.offset, score: $0.element, counter: counter) }[...]
         return GeneticSolver<ScoredIndividual>(
             populationSize: scores.count,
             selectionOperator: { ($0[0], $0[0]) },

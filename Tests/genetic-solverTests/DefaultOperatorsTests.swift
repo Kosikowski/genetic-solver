@@ -11,49 +11,51 @@ import XCTest
 final class DefaultOperatorsTests: XCTestCase {
     // MARK: Selection
 
-    func testSelectionEvaluatesEachCandidateOnce() {
+    /// The population comes with each individual's fitness, so the
+    /// tournaments call `fitness()` for none of the candidates.
+    func testSelectionUsesTheStoredFitness() {
         let counter = FitnessCallCounter()
-        let population = (0 ..< 100).map { ScoredIndividual(id: $0, score: $0, counter: counter) }
+        let population = (0 ..< 100).map { EvaluatedElement(ScoredIndividual(id: $0, score: $0, counter: counter)) }
+        counter.calls = 0
 
         _ = ScoredDefaultOperators.selectionOperator(population: population)
 
-        // Two tournaments of three candidates each.
-        XCTAssertEqual(counter.calls, 6)
+        XCTAssertEqual(counter.calls, 0)
     }
 
     func testSelectionReturnsMembersOfThePopulation() {
         let counter = FitnessCallCounter()
-        let population = (0 ..< 10).map { ScoredIndividual(id: $0, score: $0 % 3, counter: counter) }
-        let ids = Set(population.map(\.id))
+        let population = (0 ..< 10).map { EvaluatedElement(ScoredIndividual(id: $0, score: $0 % 3, counter: counter)) }
+        let ids = Set(population.map(\.element.id))
 
         for _ in 0 ..< 1000 {
             let (first, second) = ScoredDefaultOperators.selectionOperator(population: population)
-            XCTAssertTrue(ids.contains(first.id))
-            XCTAssertTrue(ids.contains(second.id))
+            XCTAssertTrue(ids.contains(first.element.id))
+            XCTAssertTrue(ids.contains(second.element.id))
         }
     }
 
     func testSelectionWithSingleIndividualReturnsItTwice() {
-        let only = ScoredIndividual(id: 7, score: 1, counter: FitnessCallCounter())
+        let only = EvaluatedElement(ScoredIndividual(id: 7, score: 1, counter: FitnessCallCounter()))
 
         let (first, second) = ScoredDefaultOperators.selectionOperator(population: [only])
 
-        XCTAssertEqual(first.id, 7)
-        XCTAssertEqual(second.id, 7)
+        XCTAssertEqual(first.element.id, 7)
+        XCTAssertEqual(second.element.id, 7)
     }
 
     /// In a tournament of three, the weaker of two individuals only wins when
     /// all three candidates are the weaker one: (1/2)^3 = 12.5% of the time.
     func testSelectionPicksTheBestOfThreeCandidates() {
         let counter = FitnessCallCounter()
-        let weak = ScoredIndividual(id: 0, score: 0, counter: counter)
-        let strong = ScoredIndividual(id: 1, score: 1, counter: counter)
+        let weak = EvaluatedElement(ScoredIndividual(id: 0, score: 0, counter: counter))
+        let strong = EvaluatedElement(ScoredIndividual(id: 1, score: 1, counter: counter))
         let picks = 10000
 
         var weakPicks = 0
         for _ in 0 ..< picks / 2 {
             let (first, second) = ScoredDefaultOperators.selectionOperator(population: [weak, strong])
-            weakPicks += [first, second].filter { $0.id == weak.id }.count
+            weakPicks += [first, second].filter { $0.element.id == weak.element.id }.count
         }
 
         // The standard deviation is about 0.0033, so this range is over 7
@@ -67,11 +69,11 @@ final class DefaultOperatorsTests: XCTestCase {
     /// always the same individual.
     func testSelectionRunsTwoIndependentTournaments() {
         let counter = FitnessCallCounter()
-        let population = (0 ..< 2).map { ScoredIndividual(id: $0, score: 5, counter: counter) }
+        let population = (0 ..< 2).map { EvaluatedElement(ScoredIndividual(id: $0, score: 5, counter: counter)) }
 
         let differentPairs = (0 ..< 1000).filter { _ in
             let (first, second) = ScoredDefaultOperators.selectionOperator(population: population)
-            return first.id != second.id
+            return first.element.id != second.element.id
         }.count
 
         XCTAssertGreaterThan(differentPairs, 0)
@@ -115,19 +117,20 @@ final class DefaultOperatorsTests: XCTestCase {
 
     func testReplacementReturnsTheNewIndividualsAndIgnoresTheOldOnes() {
         let counter = FitnessCallCounter()
-        let old = (0 ..< 3).map { ScoredIndividual(id: $0, score: 100, counter: counter) }
-        let new = (10 ..< 13).map { ScoredIndividual(id: $0, score: 0, counter: counter) }
+        let old = (0 ..< 3).map { EvaluatedElement(ScoredIndividual(id: $0, score: 100, counter: counter)) }
+        let new = (10 ..< 13).map { EvaluatedElement(ScoredIndividual(id: $0, score: 0, counter: counter)) }
+        counter.calls = 0
 
         let next = ScoredDefaultOperators.replacementOperator(old: old, new: new)
 
-        XCTAssertEqual(next.map(\.id), [10, 11, 12], "Even fitter old individuals are dropped")
+        XCTAssertEqual(next.map(\.element.id), [10, 11, 12], "Even fitter old individuals are dropped")
         XCTAssertEqual(counter.calls, 0, "The default replacement doesn't need fitness")
     }
 
     func testReplacementKeepsTheSizeOfTheNewIndividuals() {
         let counter = FitnessCallCounter()
-        let old = (0 ..< 3).map { ScoredIndividual(id: $0, score: 0, counter: counter) }
-        let more = (10 ..< 15).map { ScoredIndividual(id: $0, score: 0, counter: counter) }
+        let old = (0 ..< 3).map { EvaluatedElement(ScoredIndividual(id: $0, score: 0, counter: counter)) }
+        let more = (10 ..< 15).map { EvaluatedElement(ScoredIndividual(id: $0, score: 0, counter: counter)) }
 
         XCTAssertEqual(ScoredDefaultOperators.replacementOperator(old: old, new: more).count, 5)
         XCTAssertTrue(ScoredDefaultOperators.replacementOperator(old: old, new: []).isEmpty)
@@ -145,7 +148,8 @@ final class DefaultOperatorsTests: XCTestCase {
     func testFixedGenerationTerminationIgnoresThePopulation() {
         let counter = FitnessCallCounter()
         let check = ScoredDefaultOperators.fixedGenerationTermination(maxGenerations: 2)
-        let population = (0 ..< 5).map { ScoredIndividual(id: $0, score: 1000, counter: counter) }
+        let population = (0 ..< 5).map { EvaluatedElement(ScoredIndividual(id: $0, score: 1000, counter: counter)) }
+        counter.calls = 0
 
         XCTAssertFalse(check(1, population))
         XCTAssertTrue(check(2, []))

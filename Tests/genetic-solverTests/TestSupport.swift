@@ -43,9 +43,9 @@ final class TerminationRecorder {
 
     // MARK: Functions
 
-    func check(_ generation: Int, _ population: [TestIndividual]) -> Bool {
+    func check(_ generation: Int, _ population: [EvaluatedElement<TestIndividual>]) -> Bool {
         generations.append(generation)
-        populations.append(population.map(\.id))
+        populations.append(population.map(\.element.id))
         return decide(generation, population)
     }
 }

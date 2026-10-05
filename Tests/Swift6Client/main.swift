@@ -43,6 +43,7 @@ enum Operators: GeneticOperators {
 /// properties, or sent to other tasks, in the Swift 6 language mode.
 enum Shared {
     static let generator = SeededRandomNumberGenerator(seed: 1)
+    static let evaluated = EvaluatedElement(Individual(genes: [9, 9]))
 }
 
 let globalGenerator = SeededRandomNumberGenerator(seed: 2)
@@ -50,6 +51,7 @@ let globalGenerator = SeededRandomNumberGenerator(seed: 2)
 func requireSendable(_: (some Sendable).Type) {}
 
 requireSendable(SeededRandomNumberGenerator.self)
+requireSendable(EvaluatedElement<Individual>.self)
 
 // MARK: - Optimizer
 
@@ -67,7 +69,7 @@ actor Optimizer {
             crossoverRate: 0.8,
             mutationRate: 0.3,
             operators: Operators.self,
-            terminationCheck: { _, population in population.contains { $0.fitness() >= 70 } }
+            terminationCheck: { _, population in population.contains { $0.fitness >= 70 } }
         )
         solver.selectionOperator = GeneticSolver.tournamentSelection(using: SeededRandomNumberGenerator(seed: seed))
         solver.replacementOperator = GeneticSolver.elitistReplacement(eliteCount: 1)
@@ -80,7 +82,7 @@ actor Optimizer {
     func run(maxGenerations: Int) -> (generation: Int, bestFitness: Int) {
         solver.solve(maxGenerations: maxGenerations)
         solver.checkTermination()
-        return (solver.currentGeneration, solver.bestElement.fitness())
+        return (solver.currentGeneration, solver.bestElement.fitness)
     }
 }
 
@@ -98,6 +100,7 @@ let fromTask = await Task.detached { [globalGenerator] in
 }.value
 var local = globalGenerator
 precondition(fromTask == local.next(), "A generator sent to a task continues the same sequence")
+precondition(Shared.evaluated.fitness == 18, "An evaluated individual keeps its fitness")
 _ = sent.next()
 
 print("Swift 6 client: generation \(result.generation), best fitness \(result.bestFitness) (a random individual: \(startingBest))")
