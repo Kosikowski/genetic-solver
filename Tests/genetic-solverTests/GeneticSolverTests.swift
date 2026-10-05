@@ -132,6 +132,28 @@ final class GeneticSolverTests: XCTestCase {
             newElement: randomInitializer
         )
         let pop = solver.solve(maxGenerations: 5)
+        XCTAssertEqual(solver.currentGeneration, 5, "solve should stop at maxGenerations")
+        XCTAssertFalse(solver.isTerminated, "The termination check (generation 1000) was never met")
         XCTAssertEqual(pop.count, 6, "Returned population should match populationSize")
+    }
+
+    func testSolverStopsOnceWhenMaxGenerationsEqualsTheTerminationGeneration() {
+        var terminationCalls = 0
+        var solver = GeneticSolver<TestIndividual>(
+            populationSize: 6,
+            selectionOperator: { TestGeneticOperators.selectionOperator(population: $0) },
+            crossoverOperator: { p1, p2 in [p1, p2] },
+            mutationOperator: { $0 },
+            replacementOperator: { _, n in n },
+            terminationCheck: { gen, _ in
+                terminationCalls += 1
+                return gen >= 5
+            },
+            newElement: { TestIndividual(gene: .zero, id: 0) }
+        )
+        _ = solver.solve(maxGenerations: 5)
+        XCTAssertEqual(solver.currentGeneration, 5)
+        XCTAssertTrue(solver.isTerminated, "The check runs for generation 5 before solve stops")
+        XCTAssertEqual(terminationCalls, 6, "Once for each of generations 0 through 5")
     }
 }
