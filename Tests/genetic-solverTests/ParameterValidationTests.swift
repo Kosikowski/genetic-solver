@@ -1,10 +1,10 @@
 //  ParameterValidationTests.swift
 //  genetic-solverTests
 //
-//  Tests the rules the solver checks before it uses its parameters. The
-//  solver stops with `fatalError` and the message tested here, which XCTest
-//  can't catch, so the rules are tested through the function that produces
-//  the message.
+//  Tests the rules the solver checks in `init` and whenever a parameter is
+//  set. The solver stops with `fatalError` and the message tested here,
+//  which XCTest can't catch, so the rules are tested through the functions
+//  that produce the messages.
 
 import XCTest
 @testable import genetic_solver
@@ -62,6 +62,40 @@ final class ParameterValidationTests: XCTestCase {
             message(populationSize: 1, crossoverRate: 2, mutationRate: 2),
             "crossoverRate must be between 0 and 1, but is 2.0"
         )
+    }
+
+    func testEachParameterIsCheckedOnItsOwn() {
+        typealias Solver = GeneticSolver<TestIndividual>
+        XCTAssertNil(Solver.invalidPopulationSizeMessage(1))
+        XCTAssertEqual(Solver.invalidPopulationSizeMessage(0), "populationSize must be at least 1, but is 0")
+        XCTAssertNil(Solver.invalidRateMessage("someRate", 0))
+        XCTAssertNil(Solver.invalidRateMessage("someRate", 1))
+        XCTAssertEqual(Solver.invalidRateMessage("someRate", 1.5), "someRate must be between 0 and 1, but is 1.5")
+        XCTAssertEqual(Solver.invalidRateMessage("someRate", .nan), "someRate must be between 0 and 1, but is nan")
+    }
+
+    /// Each parameter is checked when it is set, so valid values, including
+    /// the boundaries, can be set at any time.
+    func testValidValuesCanBeSetAfterInit() {
+        var solver = makeDeterministicSolver(populationSize: 4)
+        solver.selectionOperator = { ($0[0], $0[$0.count - 1]) } // Works for one individual too
+
+        solver.crossoverRate = 0
+        solver.crossoverRate = -0.0
+        solver.crossoverRate = 1
+        solver.mutationRate = 0
+        solver.mutationRate = 1
+        solver.populationSize = 1
+        solver.step()
+        solver.populationSize = 3
+        solver.populationSize += 2
+        solver.step()
+
+        XCTAssertEqual(solver.crossoverRate, 1)
+        XCTAssertEqual(solver.mutationRate, 1)
+        XCTAssertEqual(solver.populationSize, 5)
+        XCTAssertEqual(solver.currentPopulation.count, 5)
+        XCTAssertEqual(solver.currentGeneration, 2)
     }
 
     func testSolverWithBoundaryParametersRuns() {

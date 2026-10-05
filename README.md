@@ -408,7 +408,7 @@ let rouletteSelection: SelectionOperator<MyIndividual> = { population in
 
 ### Parameter Rules
 
-`populationSize` must be at least 1, and `crossoverRate` and `mutationRate` must be between 0 and 1; when you don't pass them, the rates are 0.7 and 0.01. These are settable properties, so the solver checks them in `init`, `reset()` and `step()`, and stops the program with a message such as `crossoverRate must be between 0 and 1, but is 1.5` when one is out of range. A replacement operator must return at least one individual.
+`populationSize` must be at least 1, and `crossoverRate` and `mutationRate` must be between 0 and 1; when you don't pass them, the rates are 0.7 and 0.01. The solver checks them in `init` and whenever you set one, and stops the program right there with a message such as `crossoverRate must be between 0 and 1, but is 1.5` when one is out of range. A replacement operator must return at least one individual.
 
 ### Random Numbers
 

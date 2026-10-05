@@ -8,19 +8,25 @@
 public struct GeneticSolver<Element: GeneticElement> {
     // MARK: Properties
 
-    // Parameters, checked by `init`, `reset()` and `step()`, which stop the
-    // program with a message when one is out of range
+    // Parameters, checked by `init` and whenever they are set: a value out of
+    // range stops the program right there, with a message
 
     /// The number of individuals in each generation. Must be at least 1.
-    public var populationSize: Int
+    public var populationSize: Int {
+        didSet { Self.stop(ifInvalid: Self.invalidPopulationSizeMessage(populationSize)) }
+    }
 
     /// The probability, from 0 to 1, that `crossoverOperator` is applied to a
     /// selected pair of parents.
-    public var crossoverRate: Double
+    public var crossoverRate: Double {
+        didSet { Self.stop(ifInvalid: Self.invalidRateMessage("crossoverRate", crossoverRate)) }
+    }
 
     /// The probability, from 0 to 1, that `mutationOperator` is applied to
     /// each individual of the next generation.
-    public var mutationRate: Double
+    public var mutationRate: Double {
+        didSet { Self.stop(ifInvalid: Self.invalidRateMessage("mutationRate", mutationRate)) }
+    }
 
     // Operators, which can be replaced at any time
 
@@ -136,7 +142,12 @@ public struct GeneticSolver<Element: GeneticElement> {
         self.terminationCheck = terminationCheck
         self.newElement = newElement
 
-        Self.checkParameters(populationSize: populationSize, crossoverRate: crossoverRate, mutationRate: mutationRate)
+        // Property observers don't run in `init`, so check the parameters here.
+        Self.stop(ifInvalid: Self.invalidParameterMessage(
+            populationSize: populationSize,
+            crossoverRate: crossoverRate,
+            mutationRate: mutationRate
+        ))
 
         let initialPopulation = (0 ..< populationSize).map { _ in newElement() }
         currentPopulation = initialPopulation
@@ -150,31 +161,28 @@ public struct GeneticSolver<Element: GeneticElement> {
     /// `nil` when `populationSize` is at least 1 and both rates are between 0
     /// and 1. NaN and infinite rates are out of range.
     static func invalidParameterMessage(populationSize: Int, crossoverRate: Double, mutationRate: Double) -> String? {
-        if populationSize < 1 {
-            return "populationSize must be at least 1, but is \(populationSize)"
-        }
-        if !(0 ... 1).contains(crossoverRate) {
-            return "crossoverRate must be between 0 and 1, but is \(crossoverRate)"
-        }
-        if !(0 ... 1).contains(mutationRate) {
-            return "mutationRate must be between 0 and 1, but is \(mutationRate)"
-        }
-        return nil
+        invalidPopulationSizeMessage(populationSize)
+            ?? invalidRateMessage("crossoverRate", crossoverRate)
+            ?? invalidRateMessage("mutationRate", mutationRate)
     }
 
-    /// Stops the program with a message when a parameter is out of range.
-    /// The parameters are public and settable, so `init`, `reset()` and
-    /// `step()` check them whenever they use them. `fatalError` is used
-    /// rather than `preconditionFailure` because it prints the message in
-    /// optimized builds too.
-    private static func checkParameters(populationSize: Int, crossoverRate: Double, mutationRate: Double) {
-        if
-            let message = invalidParameterMessage(
-                populationSize: populationSize,
-                crossoverRate: crossoverRate,
-                mutationRate: mutationRate
-            )
-        {
+    /// Returns why `populationSize` is out of range, or `nil` when it is at
+    /// least 1.
+    static func invalidPopulationSizeMessage(_ populationSize: Int) -> String? {
+        populationSize < 1 ? "populationSize must be at least 1, but is \(populationSize)" : nil
+    }
+
+    /// Returns why the rate called `name` is out of range, or `nil` when it is
+    /// between 0 and 1. NaN and infinite rates are out of range.
+    static func invalidRateMessage(_ name: String, _ rate: Double) -> String? {
+        (0 ... 1).contains(rate) ? nil : "\(name) must be between 0 and 1, but is \(rate)"
+    }
+
+    /// Stops the program with `message`, if there is one. `fatalError` is
+    /// used rather than `preconditionFailure` because it prints the message
+    /// in optimized builds too.
+    private static func stop(ifInvalid message: String?) {
+        if let message {
             fatalError(message)
         }
     }
@@ -203,7 +211,6 @@ public struct GeneticSolver<Element: GeneticElement> {
     /// `newElement`, set `currentGeneration` back to 0, and call
     /// `terminationCheck` once for the new population.
     public mutating func reset() {
-        Self.checkParameters(populationSize: populationSize, crossoverRate: crossoverRate, mutationRate: mutationRate)
         currentPopulation = (0 ..< populationSize).map { _ in newElement() }
         currentGeneration = 0
         isTerminated = terminationCheck(currentGeneration, currentPopulation)
@@ -217,7 +224,6 @@ public struct GeneticSolver<Element: GeneticElement> {
     @discardableResult
     public mutating func step() -> Bool {
         guard !isTerminated else { return true }
-        Self.checkParameters(populationSize: populationSize, crossoverRate: crossoverRate, mutationRate: mutationRate)
         // Selection & Crossover
         var offspring: [Element] = []
         while offspring.count < populationSize {
