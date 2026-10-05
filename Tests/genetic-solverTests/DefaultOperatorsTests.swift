@@ -111,4 +111,84 @@ final class DefaultOperatorsTests: XCTestCase {
 
         XCTAssertGreaterThan(differentPairs, 0)
     }
+
+    // MARK: Crossover
+
+    func testCrossoverReturnsTheParentsUnchangedInOrder() {
+        let counter = FitnessCounter()
+        let parent1 = CountingIndividual(id: 1, value: 10, counter: counter)
+        let parent2 = CountingIndividual(id: 2, value: 20, counter: counter)
+
+        let children = DefaultOperators.crossoverOperator(parent1: parent1, parent2: parent2)
+
+        XCTAssertEqual(children.map(\.id), [1, 2])
+        XCTAssertEqual(counter.calls, 0, "The default crossover doesn't need fitness")
+    }
+
+    func testCrossoverWithTheSameParentTwiceReturnsTwoCopies() {
+        let parent = CountingIndividual(id: 3, value: 0, counter: FitnessCounter())
+
+        let children = DefaultOperators.crossoverOperator(parent1: parent, parent2: parent)
+
+        XCTAssertEqual(children.map(\.id), [3, 3])
+    }
+
+    // MARK: Mutation
+
+    func testMutationReturnsTheElementUnchanged() {
+        let counter = FitnessCounter()
+        let element = CountingIndividual(id: 4, value: 40, counter: counter)
+
+        let mutated = DefaultOperators.mutationOperator(element: element)
+
+        XCTAssertEqual(mutated.id, 4)
+        XCTAssertEqual(mutated.value, 40)
+        XCTAssertEqual(counter.calls, 0, "The default mutation doesn't need fitness")
+    }
+
+    // MARK: Replacement
+
+    func testReplacementReturnsTheNewIndividualsAndIgnoresTheOldOnes() {
+        let counter = FitnessCounter()
+        let old = (0 ..< 3).map { CountingIndividual(id: $0, value: 100, counter: counter) }
+        let new = (10 ..< 13).map { CountingIndividual(id: $0, value: 0, counter: counter) }
+
+        let next = DefaultOperators.replacementOperator(old: old, new: new)
+
+        XCTAssertEqual(next.map(\.id), [10, 11, 12], "Even fitter old individuals are dropped")
+        XCTAssertEqual(counter.calls, 0, "The default replacement doesn't need fitness")
+    }
+
+    func testReplacementKeepsTheSizeOfTheNewIndividuals() {
+        let counter = FitnessCounter()
+        let old = (0 ..< 3).map { CountingIndividual(id: $0, value: 0, counter: counter) }
+        let more = (10 ..< 15).map { CountingIndividual(id: $0, value: 0, counter: counter) }
+
+        XCTAssertEqual(DefaultOperators.replacementOperator(old: old, new: more).count, 5)
+        XCTAssertTrue(DefaultOperators.replacementOperator(old: old, new: []).isEmpty)
+        XCTAssertEqual(DefaultOperators.replacementOperator(old: [], new: more).count, 5)
+    }
+
+    // MARK: Fixed generation termination
+
+    func testFixedGenerationTerminationPassesFromMaxGenerationsOn() {
+        let check = DefaultOperators.fixedGenerationTermination(maxGenerations: 3)
+
+        XCTAssertEqual((0 ... 5).map { check($0, []) }, [false, false, false, true, true, true])
+    }
+
+    func testFixedGenerationTerminationIgnoresThePopulation() {
+        let counter = FitnessCounter()
+        let check = DefaultOperators.fixedGenerationTermination(maxGenerations: 2)
+        let population = (0 ..< 5).map { CountingIndividual(id: $0, value: 1000, counter: counter) }
+
+        XCTAssertFalse(check(1, population))
+        XCTAssertTrue(check(2, []))
+        XCTAssertEqual(counter.calls, 0)
+    }
+
+    func testFixedGenerationTerminationWithZeroOrNegativeMaxPassesImmediately() {
+        XCTAssertTrue(DefaultOperators.fixedGenerationTermination(maxGenerations: 0)(0, []))
+        XCTAssertTrue(DefaultOperators.fixedGenerationTermination(maxGenerations: -1)(0, []))
+    }
 }
