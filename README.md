@@ -33,22 +33,43 @@ This cycle repeats until the termination condition is satisfied, gradually impro
 - **State Tracking**: Monitor current population and generation during execution
 - **Incremental Execution**: Step-by-step execution with the `step()` method
 
+## Requirements
+
+- Swift 5.9 or later
+- macOS 13, iOS 17, tvOS 17, visionOS 1 or later, Linux, or Windows
+
+On Apple platforms, a package that depends on this library must declare at least the same minimum versions, for example `platforms: [.macOS(.v13), .iOS(.v17)]`. Without that, the build fails with "requires minimum platform version 13.0 for the macOS platform".
+
 ## Installation
 
 ### Swift Package Manager
 
-Add the following dependency to your `Package.swift`:
+Add the package to your `Package.swift`, then add its `genetic-solver` product to each target that uses it:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/Kosikowski/genetic-solver.git", from: "1.0.0")
+    .package(url: "https://github.com/Kosikowski/genetic-solver.git", from: "0.1.0"),
+],
+targets: [
+    .target(
+        name: "MyTarget",
+        dependencies: [.product(name: "genetic-solver", package: "genetic-solver")]
+    ),
 ]
 ```
 
 Or add it to your Xcode project:
 1. File → Add Package Dependencies
-2. Enter the repository URL
+2. Enter `https://github.com/Kosikowski/genetic-solver.git`
 3. Select the version you want to use
+
+### Importing
+
+The package name contains a hyphen, so the module is called `genetic_solver`:
+
+```swift
+import genetic_solver
+```
 
 ## Quick Start
 
@@ -57,6 +78,8 @@ Or add it to your Xcode project:
 First, create a type that represents an individual in your genetic algorithm:
 
 ```swift
+import genetic_solver
+
 struct MyIndividual: GeneticElement, FitnessEvaluatable {
     var genes: [Int]
 
