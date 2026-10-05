@@ -543,12 +543,14 @@ This project uses SwiftFormat to maintain consistent code style. Different Swift
 Install pre-commit hooks to automatically format code before commits:
 
 ```bash
-# Install pre-commit
+# Install pre-commit (3.2.0 or later)
 pip install pre-commit
 
 # Install the git hook scripts
 pre-commit install
 ```
+
+The hook versions, including the SwiftFormat version CI uses, are pinned in `.pre-commit-config.yaml`. Dependabot proposes updates weekly; `pre-commit autoupdate` updates them by hand. If an update changes how SwiftFormat formats code, the SwiftFormat check fails on that pull request until `./scripts/format.sh` is run on its branch.
 
 #### CI/CD
 
