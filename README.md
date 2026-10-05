@@ -472,7 +472,7 @@ This project uses SwiftFormat to maintain consistent code style. Different Swift
    ```bash
    brew install swiftformat
    ```
-   Homebrew installs the latest release. For an exact version, download it from the [SwiftFormat releases](https://github.com/nicklockwood/SwiftFormat/releases) page.
+   Homebrew installs the latest release. To get exactly the pinned version, as CI does, run `./scripts/install-swiftformat.sh <folder>` and use `<folder>/swiftformat` (or put `<folder>` first in your `PATH`).
 
 2. Format code locally:
    ```bash

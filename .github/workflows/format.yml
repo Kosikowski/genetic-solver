@@ -14,40 +14,18 @@ permissions:
 
 jobs:
   format:
-    runs-on: macos-14
+    runs-on: ubuntu-latest
     name: Auto Format Code
 
     steps:
       - uses: actions/checkout@v6
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 0
-
-      - name: Setup Xcode
-        uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: '16'
-
-      - name: Install Swift
-        uses: SwiftyLab/setup-swift@v1
-        with:
-          swift-version: "6.1.2"
-
-      - name: Clean build directory
-        run: rm -rf .build
 
       # Install the SwiftFormat version pinned in .pre-commit-config.yaml so CI
       # formats code exactly like the local pre-commit hook.
       - name: Install SwiftFormat
         run: |
-          version="$(./scripts/swiftformat-version.sh)"
-          curl -fsSL -o "$RUNNER_TEMP/swiftformat.zip" \
-            "https://github.com/nicklockwood/SwiftFormat/releases/download/${version}/swiftformat.zip"
-          unzip -q "$RUNNER_TEMP/swiftformat.zip" -d "$RUNNER_TEMP/swiftformat"
+          ./scripts/install-swiftformat.sh "$RUNNER_TEMP/swiftformat"
           echo "$RUNNER_TEMP/swiftformat" >> "$GITHUB_PATH"
-
-      - name: Show SwiftFormat version
-        run: swiftformat --version
 
       - name: Check current formatting
         id: check-formatting
