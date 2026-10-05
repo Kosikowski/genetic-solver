@@ -95,6 +95,11 @@ final class ReproducibilityTests: XCTestCase {
     /// property or send it to another task. This test target is compiled in
     /// the Swift 5 language mode, which doesn't enforce `Sendable`, so the
     /// compile-time part only fails with complete concurrency checking.
+    ///
+    /// The package sets no minimum OS versions, so older Xcode versions build
+    /// the tests for OS versions that predate Swift concurrency; the
+    /// availability attribute keeps `Task` within the versions that have it.
+    @available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
     func testSeededGeneratorCanBeSentToAnotherTask() async {
         func requireSendable(_: (some Sendable).Type) {}
         requireSendable(SeededRandomNumberGenerator.self)
