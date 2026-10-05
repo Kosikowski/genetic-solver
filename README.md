@@ -31,7 +31,7 @@ This cycle repeats until the termination condition is satisfied, gradually impro
 - **Type Safety**: Leverages Swift's type system for compile-time safety
 - **Extensible**: Easy to extend with custom operators and termination conditions
 - **State Tracking**: Monitor current population and generation during execution
-- **Incremental Execution**: Step-by-step execution with the `step()` method
+- **Incremental Execution**: Step-by-step execution with the `step()` method, continuing runs, and `reset()` to start over
 
 ## Requirements
 
@@ -226,7 +226,7 @@ print("Best fitness: \(bestIndividual.fitness())")
 
 ### Step-by-Step Execution
 
-The solver now supports incremental execution using the `step()` method:
+`step()` runs one generation and returns `true` once the termination check passes:
 
 ```swift
 var solver = GeneticSolver<MyIndividual>(/* ... */)
@@ -239,6 +239,21 @@ while !solver.step() {
 // Access current state
 print("Final generation: \(solver.currentGeneration)")
 print("Population size: \(solver.currentPopulation.count)")
+```
+
+### Continuing and Restarting
+
+The solver keeps its population and generation count between calls. `solve(maxGenerations:)` continues from wherever `init`, `step()` or an earlier `solve` call left off, and runs until the termination check passes or the total generation count reaches `maxGenerations`. Call `reset()` to start over with a new population:
+
+```swift
+var solver = GeneticSolver<MyIndividual>(/* ... */)
+
+solver.step()                          // Generation 1
+_ = solver.solve(maxGenerations: 50)   // Continues up to generation 50
+_ = solver.solve(maxGenerations: 100)  // Continues up to generation 100
+
+solver.reset()                         // New population, generation 0
+_ = solver.solve(maxGenerations: 100)  // A fresh run
 ```
 
 ### Custom Termination Conditions

@@ -30,6 +30,9 @@ public struct GeneticSolver<Element: GeneticElement & FitnessEvaluatable> {
     // MARK: Lifecycle
 
     /// Initialize the genetic solver with the specified parameters and operators.
+    ///
+    /// The first population is created right away by calling `newElement`
+    /// `populationSize` times.
     public init(
         populationSize: Int,
         crossoverRate: Double = 0.7,
@@ -57,16 +60,27 @@ public struct GeneticSolver<Element: GeneticElement & FitnessEvaluatable> {
 
     // MARK: Functions
 
-    /// Run the genetic algorithm until termination or maxGenerations reached, returning the final population.
+    /// Run generations until the termination check passes or `currentGeneration`
+    /// reaches `maxGenerations`, then return the current population.
+    ///
+    /// The run continues from the current state: the population created by
+    /// `init`, or wherever earlier calls to `step()` or `solve(maxGenerations:)`
+    /// left off. `maxGenerations` limits the total generation count, not the
+    /// number of generations run by this call. Call `reset()` to start over.
     public mutating func solve(maxGenerations: Int = 1000) -> [Element] {
-        currentPopulation = (0 ..< populationSize).map { _ in newElement() }
-        currentGeneration = 0
         while currentGeneration < maxGenerations, !terminationCheck(currentGeneration, currentPopulation) {
             if step() {
                 break
             }
         }
         return currentPopulation
+    }
+
+    /// Replace the population with `populationSize` new elements from
+    /// `newElement` and set `currentGeneration` back to 0.
+    public mutating func reset() {
+        currentPopulation = (0 ..< populationSize).map { _ in newElement() }
+        currentGeneration = 0
     }
 
     /// Advance the algorithm by one generation. Returns true if terminated, false otherwise.
