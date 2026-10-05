@@ -344,8 +344,10 @@ public struct GeneticSolver<Element: GeneticElement> {
         // Elitism
         let elite = Self.fittest(eliteCount, of: currentPopulation)
         let offspringCount = populationSize - elite.count
-        // Selection & Crossover
+        // Selection & Crossover. Offspring beyond `offspringCount` are never
+        // added, so they aren't mutated or evaluated.
         var offspring: [Offspring] = []
+        offspring.reserveCapacity(offspringCount)
         while offspring.count < offspringCount {
             let (parent1, parent2) = selectionOperator(currentPopulation)
             let children = Double.random(in: 0 ..< 1, using: &generator) < crossoverRate
@@ -354,20 +356,30 @@ public struct GeneticSolver<Element: GeneticElement> {
             // Copy the parents when crossover is skipped or returns no children,
             // so every pass adds at least one element and the loop always ends.
             if children.isEmpty {
-                offspring += [.copy(parent1), .copy(parent2)]
+                offspring.append(.copy(parent1))
+                if offspring.count < offspringCount {
+                    offspring.append(.copy(parent2))
+                }
             } else {
-                offspring += children.map { .new($0) }
+                for child in children.prefix(offspringCount - offspring.count) {
+                    offspring.append(.new(child))
+                }
             }
         }
-        offspring = Array(offspring.prefix(offspringCount))
-        // Mutation
-        let mutated: [Offspring] = offspring.map { candidate in
-            Double.random(in: 0 ..< 1, using: &generator) < mutationRate
-                ? .new(mutationOperator(candidate.element))
-                : candidate
+        // Mutation, in place: one decision for each offspring, in order, after
+        // all the crossovers
+        for index in offspring.indices {
+            if Double.random(in: 0 ..< 1, using: &generator) < mutationRate {
+                offspring[index] = .new(mutationOperator(offspring[index].element))
+            }
         }
-        // Evaluation: once for each individual that isn't an unchanged copy
-        let newIndividuals = elite + mutated.map(\.evaluated)
+        // Evaluation, in order, once for each individual that isn't an
+        // unchanged copy; the elite come first
+        var newIndividuals = elite
+        newIndividuals.reserveCapacity(populationSize)
+        for candidate in offspring {
+            newIndividuals.append(candidate.evaluated)
+        }
         // Replacement
         storedPopulation = replacementOperator(currentPopulation, newIndividuals)
         if storedPopulation.isEmpty {
