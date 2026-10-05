@@ -344,7 +344,7 @@ let rouletteSelection: SelectionOperator<MyIndividual> = { population in
 ### Operator Types
 
 - `SelectionOperator<Element>`: `([Element]) -> (Element, Element)`
-- `CrossoverOperator<Element>`: `(Element, Element) -> [Element]`
+- `CrossoverOperator<Element>`: `(Element, Element) -> [Element]`. It may return any number of children; if it returns none, the parents are kept
 - `MutationOperator<Element>`: `(Element) -> Element`
 - `ReplacementOperator<Element>`: `([Element], [Element]) -> [Element]`
 - `TerminationCheck<Element>`: `(Int, [Element]) -> Bool`

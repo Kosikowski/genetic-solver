@@ -9,15 +9,39 @@ public struct GeneticSolver<Element: GeneticElement & FitnessEvaluatable> {
     // MARK: Properties
 
     // Parameters
+
+    /// The number of individuals in each generation.
     public var populationSize: Int
+
+    /// The probability, from 0 to 1, that `crossoverOperator` is applied to a
+    /// selected pair of parents.
     public var crossoverRate: Double
+
+    /// The probability, from 0 to 1, that `mutationOperator` is applied to
+    /// each individual of the next generation.
     public var mutationRate: Double
 
-    // Operators (can be replaced by user)
+    // Operators, which can be replaced at any time
+
+    /// Picks two parents from the current population.
     public var selectionOperator: SelectionOperator<Element>
+
+    /// Combines two selected parents into children. It is applied to each
+    /// selected pair with probability `crossoverRate`; otherwise, or when it
+    /// returns no children, the parents are copied into the next generation
+    /// unchanged. Children beyond `populationSize` are dropped.
     public var crossoverOperator: CrossoverOperator<Element>
+
+    /// Changes an individual. It is applied to each individual of the next
+    /// generation with probability `mutationRate`.
     public var mutationOperator: MutationOperator<Element>
+
+    /// Builds the next population from the current population and the new
+    /// individuals.
     public var replacementOperator: ReplacementOperator<Element>
+
+    /// Creates a new individual. Used to fill the population in `init` and
+    /// `reset()`.
     public var newElement: () -> Element
 
     /// Decides whether the run is finished, given the generation count and
@@ -117,13 +141,10 @@ public struct GeneticSolver<Element: GeneticElement & FitnessEvaluatable> {
         var offspring: [Element] = []
         while offspring.count < populationSize {
             let (parent1, parent2) = selectionOperator(currentPopulation)
-            let children: [Element]
-            if Double.random(in: 0 ..< 1) < crossoverRate {
-                children = crossoverOperator(parent1, parent2)
-            } else {
-                children = [parent1, parent2]
-            }
-            offspring.append(contentsOf: children)
+            let children = Double.random(in: 0 ..< 1) < crossoverRate ? crossoverOperator(parent1, parent2) : []
+            // Copy the parents when crossover is skipped or returns no children,
+            // so every pass adds at least one element and the loop always ends.
+            offspring.append(contentsOf: children.isEmpty ? [parent1, parent2] : children)
         }
         offspring = Array(offspring.prefix(populationSize))
         // Mutation

@@ -53,19 +53,25 @@ final class TerminationRecorder {
 // MARK: - Deterministic solver
 
 /// A solver whose operators involve no randomness: selection always picks
-/// the first two individuals, and crossover and mutation return their input
-/// unchanged, so each generation is `[p0, p1, p0, p1, ...]`.
+/// the first two individuals, and by default crossover and mutation return
+/// their input unchanged, so each generation is `[p0, p1, p0, p1, ...]`.
+///
+/// A `crossoverRate` of 1 applies `crossoverOperator` to every pair and a
+/// rate of 0 never applies it, so both keep the solver deterministic.
 func makeDeterministicSolver(
     populationSize: Int = 4,
     factory: ElementFactory = ElementFactory(),
+    crossoverRate: Double = 0.7,
+    crossoverOperator: @escaping CrossoverOperator<TestIndividual> = { [$0, $1] },
     terminationCheck: @escaping TerminationCheck<TestIndividual> = { _, _ in false }
 )
     -> GeneticSolver<TestIndividual>
 {
     GeneticSolver<TestIndividual>(
         populationSize: populationSize,
+        crossoverRate: crossoverRate,
         selectionOperator: { ($0[0], $0[1]) },
-        crossoverOperator: { [$0, $1] },
+        crossoverOperator: crossoverOperator,
         mutationOperator: { $0 },
         replacementOperator: { _, new in new },
         terminationCheck: terminationCheck,
