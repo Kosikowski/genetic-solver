@@ -494,6 +494,13 @@ This package uses the Swift 5 language mode, which doesn't enforce `Sendable`. C
 ./scripts/test-swift6-client.sh
 ```
 
+To measure how fast the solver runs, build and run the benchmark (`Tests/Benchmark/main.swift`) in release mode. It runs three seeded scenarios, prints the best and median times and the best fitness found, and fails if runs with the same seeds find different results. Compare timings on one machine, and check that a change that should only make the solver faster leaves the best fitness unchanged. CI runs it twice to keep it compiling.
+
+```bash
+./scripts/benchmark.sh       # 5 runs of each scenario
+./scripts/benchmark.sh 10    # 10 runs
+```
+
 To run the tests for an Apple platform the way CI does, with the Xcode selected by `xcode-select`:
 
 ```bash

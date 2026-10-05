@@ -79,3 +79,17 @@ jobs:
 
       - name: Build and run a Swift 6 client of this package
         run: ./scripts/test-swift6-client.sh
+
+  # Builds the benchmark (scripts/benchmark.sh) so it keeps compiling, and
+  # runs it twice, which checks that seeded runs give the same results. The
+  # timings on shared runners vary, so they are only printed.
+  benchmark:
+    runs-on: ubuntu-latest
+    name: Benchmark
+    container: swift:6.1.2
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Build and run the benchmark
+        run: ./scripts/benchmark.sh 2
