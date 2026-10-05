@@ -10,6 +10,7 @@ These changes can affect code written for 0.1.0:
 
 - **`solve(maxGenerations:)` continues instead of starting over.** It used to create a new population on every call, discarding the one from `init` and any progress made with `step()`. It now continues from the current state, and `maxGenerations` limits the total generation count rather than the generations run by that call. Call `reset()` first to start a new run.
 - **The termination check runs once per population.** It used to run up to three times per generation. It now runs exactly once for the population created by `init` or `reset()` and once after each generation, so `init` calls it for the starting population. Checks that keep their own state (for example, counting generations without improvement) now see each generation once.
+- **`step()` no longer calls the termination check before running a generation.** It uses `isTerminated`, the result of the latest call. So a check that depends on something outside the solver, such as a cancel flag or a deadline, sees a change only after the next generation, and once it has stopped the run, changing that state doesn't let the run continue. Call `checkTermination()` after changing the state to apply it right away.
 - **Invalid input stops the program with a message.** A `populationSize` below 1, a `crossoverRate` or `mutationRate` outside 0…1 (including NaN), a replacement operator that returns no individuals, and selection from an empty population used to crash with unrelated errors or be accepted silently. The parameters are checked in `init` and whenever one is set, so an out-of-range value stops the program at the line that sets it.
 - **`GeneticOperators.Element` must conform to `GeneticElement`.** Types that didn't couldn't be used with the solver anyway.
 - **Code that uses `GeneticElement` as a type must write `any GeneticElement`.** `GeneticElement` now includes `FitnessEvaluatable`, and with it the `Fitness` associated type, so `[GeneticElement]` becomes `[any GeneticElement]` and `value is GeneticElement` becomes `value is any GeneticElement`. Without `any`, Swift 5.9 reports an error and Swift 6 a warning. Types that conform to `GeneticElement`, and generic code such as `<T: GeneticElement>`, don't change.
@@ -19,7 +20,7 @@ These changes can affect code written for 0.1.0:
 
 - `GeneticSolver(populationSize:crossoverRate:mutationRate:operators:terminationCheck:)` creates a solver from a `GeneticOperators` type.
 - `reset()` starts a new run with a new population.
-- `isTerminated` keeps the latest result of the termination check.
+- `isTerminated` keeps the latest result of the termination check, and `checkTermination()` calls the check again for the current population.
 - `bestElement` returns the fittest individual of the current population.
 - `GeneticSolver.elitistReplacement(eliteCount:)` keeps the fittest individuals from one generation to the next, so the best solution found is never lost.
 - `GeneticSolver.tournamentSelection(tournamentSize:using:)` offers tournament selection with any size and random number generator.

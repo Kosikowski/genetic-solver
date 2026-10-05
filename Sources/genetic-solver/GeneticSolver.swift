@@ -76,10 +76,15 @@ public struct GeneticSolver<Element: GeneticElement> {
     /// result is kept in `isTerminated`, so a check that keeps its own state
     /// (for example, counting generations without improvement) sees every
     /// generation once. Assigning a new check calls it once for the current
-    /// population.
+    /// population, and so does `checkTermination()`.
+    ///
+    /// The check runs after each generation, not before the next one, so a
+    /// check that reads something outside the solver, such as a cancel flag
+    /// or a deadline, sees a change after the next generation. Call
+    /// `checkTermination()` to apply such a change right away.
     public var terminationCheck: TerminationCheck<Element> {
         didSet {
-            isTerminated = terminationCheck(currentGeneration, currentPopulation)
+            checkTermination()
         }
     }
 
@@ -89,10 +94,12 @@ public struct GeneticSolver<Element: GeneticElement> {
     /// The current generation count.
     public private(set) var currentGeneration: Int
 
-    /// Whether `terminationCheck` passed for the current population. Once it
-    /// is `true`, `step()` and `solve(maxGenerations:)` run no more
-    /// generations until `reset()` is called or `terminationCheck` is
-    /// replaced with one that returns `false`.
+    /// The result of the latest call to `terminationCheck`, which is made for
+    /// each new population, when the check is replaced, and by
+    /// `checkTermination()`. Once it is `true`, `step()` and
+    /// `solve(maxGenerations:)` run no more generations until a later call
+    /// returns `false`: after `reset()`, after replacing the check, or after
+    /// `checkTermination()` once the state the check depends on has changed.
     public private(set) var isTerminated: Bool
 
     // MARK: Computed Properties
@@ -213,14 +220,29 @@ public struct GeneticSolver<Element: GeneticElement> {
     public mutating func reset() {
         currentPopulation = (0 ..< populationSize).map { _ in newElement() }
         currentGeneration = 0
+        checkTermination()
+    }
+
+    /// Call `terminationCheck` once for the current population, store the
+    /// result in `isTerminated`, and return it.
+    ///
+    /// The solver calls the check after each generation, not before the next
+    /// one. Use this when a check depends on something outside the solver
+    /// that has changed since: for example, after setting a cancel flag, so
+    /// that the next `step()` runs nothing, or after extending a deadline
+    /// that stopped the run, so that `solve(maxGenerations:)` continues.
+    @discardableResult
+    public mutating func checkTermination() -> Bool {
         isTerminated = terminationCheck(currentGeneration, currentPopulation)
+        return isTerminated
     }
 
     /// Advance the algorithm by one generation and return `isTerminated`.
     ///
     /// If the solver has already terminated, this does nothing and returns
     /// `true`. Otherwise it runs one generation, calls `terminationCheck`
-    /// once for the new population, and returns the result.
+    /// once for the new population, and returns the result. It doesn't call
+    /// the check before running the generation; see `checkTermination()`.
     @discardableResult
     public mutating func step() -> Bool {
         guard !isTerminated else { return true }
@@ -244,7 +266,6 @@ public struct GeneticSolver<Element: GeneticElement> {
             fatalError("replacementOperator returned no individuals")
         }
         currentGeneration += 1
-        isTerminated = terminationCheck(currentGeneration, currentPopulation)
-        return isTerminated
+        return checkTermination()
     }
 }

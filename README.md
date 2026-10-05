@@ -267,6 +267,8 @@ solver.solve(maxGenerations: 100)      // A fresh run
 
 The solver calls the termination check exactly once for each population: the one created by `init` or `reset()`, and the one produced by each generation. Assigning a new check to `terminationCheck` calls it once for the current population. The latest result is available as `solver.isTerminated`.
 
+The check runs after each generation, not before the next one. If it depends on something outside the solver, such as a cancel flag or a deadline, call `solver.checkTermination()` after changing that state to apply the change right away. Otherwise the solver sees it only after the next generation, and once the check has stopped the run, the run stays stopped.
+
 Because each population is checked exactly once, a check can keep its own state. This one stops when the best fitness hasn't improved for a number of generations:
 
 ```swift
@@ -394,7 +396,8 @@ let rouletteSelection: SelectionOperator<MyIndividual> = { population in
 - `currentPopulation`: The current population
 - `currentGeneration`: The number of generations run since `init` or the last `reset()`
 - `bestElement`: The fittest individual in the current population (with elitist replacement, the best found so far)
-- `isTerminated`: Whether the termination check passed for the current population
+- `isTerminated`: The result of the latest termination check
+- `checkTermination()`: Calls the termination check again for the current population and updates `isTerminated`, for checks that depend on state outside the solver
 - `randomNumberGenerator`: The generator for the solver's decisions about applying crossover and mutation (the system generator unless you set one)
 - `step()`: Runs one generation and returns `isTerminated`; does nothing once terminated
 - `solve(maxGenerations:)`: Runs generations until terminated or `currentGeneration` reaches `maxGenerations`, and returns the current population

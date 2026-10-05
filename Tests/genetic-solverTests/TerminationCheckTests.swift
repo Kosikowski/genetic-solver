@@ -2,7 +2,8 @@
 //  genetic-solverTests
 //
 //  Tests that the solver calls terminationCheck exactly once for each
-//  population and keeps the result in isTerminated.
+//  population, keeps the result in isTerminated, and calls it again on
+//  request with checkTermination().
 
 import XCTest
 @testable import genetic_solver
@@ -173,6 +174,81 @@ final class TerminationCheckTests: XCTestCase {
         XCTAssertTrue(solver.isTerminated)
         XCTAssertTrue(solver.step())
         XCTAssertEqual(solver.currentGeneration, 1)
+    }
+
+    // MARK: checkTermination()
+
+    func testCheckTerminationCallsTheCheckOnceForTheCurrentPopulation() {
+        let recorder = TerminationRecorder()
+        var solver = makeDeterministicSolver(terminationCheck: recorder.check)
+        solver.step()
+        solver.step()
+        let populationBefore = solver.currentPopulation.map(\.id)
+
+        XCTAssertFalse(solver.checkTermination())
+
+        XCTAssertEqual(recorder.generations, [0, 1, 2, 2])
+        XCTAssertEqual(recorder.populations.last, populationBefore)
+        XCTAssertEqual(solver.currentPopulation.map(\.id), populationBefore, "Runs no generation")
+        XCTAssertEqual(solver.currentGeneration, 2)
+        XCTAssertFalse(solver.isTerminated)
+    }
+
+    /// The check runs after each generation, not before the next one, so a
+    /// change to outside state is seen after the next generation.
+    func testCheckThatReadsOutsideStateSeesAChangeAfterTheNextGeneration() {
+        var cancelled = false
+        var solver = makeDeterministicSolver(terminationCheck: { _, _ in cancelled })
+        solver.step()
+
+        cancelled = true
+
+        XCTAssertFalse(solver.isTerminated, "Not checked since the flag changed")
+        XCTAssertTrue(solver.step(), "Runs one more generation, then sees the flag")
+        XCTAssertEqual(solver.currentGeneration, 2)
+    }
+
+    func testCheckTerminationAppliesAChangeInOutsideStateRightAway() {
+        var cancelled = false
+        var solver = makeDeterministicSolver(terminationCheck: { _, _ in cancelled })
+        solver.step()
+
+        cancelled = true
+        XCTAssertTrue(solver.checkTermination())
+
+        XCTAssertTrue(solver.isTerminated)
+        XCTAssertTrue(solver.step())
+        _ = solver.solve(maxGenerations: 10)
+        XCTAssertEqual(solver.currentGeneration, 1, "No generation runs after the flag is applied")
+    }
+
+    /// A check whose limit is captured from outside stops the run; raising
+    /// the limit and calling `checkTermination()` lets the run continue.
+    func testCheckTerminationLetsTheRunContinueAfterTheOutsideLimitIsRaised() {
+        var limit = 3
+        var solver = makeDeterministicSolver(terminationCheck: { generation, _ in generation >= limit })
+        _ = solver.solve(maxGenerations: 10)
+        XCTAssertEqual(solver.currentGeneration, 3)
+
+        limit = 6
+        _ = solver.solve(maxGenerations: 10)
+        XCTAssertEqual(solver.currentGeneration, 3, "Still terminated: the check hasn't run since")
+
+        XCTAssertFalse(solver.checkTermination())
+        _ = solver.solve(maxGenerations: 10)
+        XCTAssertEqual(solver.currentGeneration, 6)
+        XCTAssertTrue(solver.isTerminated)
+    }
+
+    func testCheckTerminationKeepsATerminatedSolverTerminatedWhenTheCheckStillPasses() {
+        let recorder = TerminationRecorder(decide: { generation, _ in generation >= 1 })
+        var solver = makeDeterministicSolver(terminationCheck: recorder.check)
+        solver.step()
+
+        XCTAssertTrue(solver.checkTermination())
+
+        XCTAssertTrue(solver.isTerminated)
+        XCTAssertEqual(recorder.generations, [0, 1, 1])
     }
 
     // MARK: Checks with their own state
