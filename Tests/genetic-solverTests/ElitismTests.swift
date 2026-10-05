@@ -1,7 +1,7 @@
 //  ElitismTests.swift
 //  genetic-solverTests
 //
-//  Tests GeneticSolver.elitistReplacement(eliteCount:) and bestElement.
+//  Tests the solver's eliteCount and bestElement.
 
 import XCTest
 @testable import genetic_solver
@@ -9,102 +9,166 @@ import XCTest
 // MARK: - ElitismTests
 
 final class ElitismTests: XCTestCase {
-    // MARK: Elitist replacement
+    // MARK: Which individuals are kept
 
-    func testKeepsTheFittestOfTheCurrentPopulationFirst() {
-        let old = individuals(scores: [5, 1, 9, 3])
-        let new = individuals(scores: [0, 0, 0, 0], firstID: 10)
+    func testTheFittestComeFirstFollowedByTheOffspring() {
+        var solver = makeSolver(scores: [5, 1, 9, 3], eliteCount: 2)
 
-        let next = elitist(2)(old, new)
+        solver.step()
 
-        XCTAssertEqual(next.map(\.element.id), [2, 0, 10, 11], "The two fittest old ones, then the first new ones")
-    }
-
-    func testZeroEliteCountReturnsTheNewIndividualsWithoutEvaluatingFitness() {
-        let counter = FitnessCallCounter()
-        let old = individuals(scores: [5, 1], counter: counter)
-        let new = individuals(scores: [0, 0], firstID: 10, counter: counter)
-        counter.calls = 0
-
-        let next = elitist(0)(old, new)
-
-        XCTAssertEqual(next.map(\.element.id), [10, 11])
-        XCTAssertEqual(counter.calls, 0)
-    }
-
-    func testEliteCountLargerThanTheCurrentPopulationKeepsAllOfIt() {
-        let old = individuals(scores: [1, 4])
-        let new = individuals(scores: [0, 0, 0, 0], firstID: 10)
-
-        let next = elitist(5)(old, new)
-
-        XCTAssertEqual(next.map(\.element.id), [1, 0, 10, 11])
-    }
-
-    func testEliteCountAtLeastTheNewCountReturnsOnlyTheElite() {
-        let old = individuals(scores: [1, 4, 3, 2])
-        let new = individuals(scores: [0, 0], firstID: 10)
-
-        let next = elitist(3)(old, new)
-
-        XCTAssertEqual(next.map(\.element.id), [1, 2], "Only as many as there are new individuals")
+        XCTAssertEqual(solver.currentPopulation.map(\.element.id), [2, 0, 100, 101], "Ids 2 and 0 score 9 and 5")
     }
 
     func testTiesKeepTheEarlierIndividual() {
-        let old = individuals(scores: [7, 7, 7])
-        let new = individuals(scores: [0, 0, 0], firstID: 10)
+        var solver = makeSolver(scores: [7, 7, 7, 7], eliteCount: 3)
 
-        let next = elitist(2)(old, new)
+        solver.step()
 
-        XCTAssertEqual(next.map(\.element.id), [0, 1, 10])
+        XCTAssertEqual(solver.currentPopulation.map(\.element.id), [0, 1, 2, 100])
     }
 
-    /// The individuals come with their fitness, so ranking them calls
-    /// `fitness()` for none of them.
-    func testUsesTheStoredFitnessWithoutEvaluatingAgain() {
+    func testEliteCountOfZeroKeepsOnlyOffspring() {
+        var solver = makeSolver(scores: [5, 1, 9, 3], eliteCount: 0)
+
+        solver.step()
+
+        XCTAssertEqual(solver.currentPopulation.map(\.element.id), [100, 101, 102, 103])
+    }
+
+    /// The elite skip selection, crossover and mutation, and keep the fitness
+    /// they have.
+    func testTheEliteAreCarriedOverUnchangedAndNotEvaluatedAgain() {
         let counter = FitnessCallCounter()
-        let old = individuals(scores: [3, 1, 2, 5, 4], counter: counter)
-        let new = individuals(scores: [0, 0, 0, 0, 0], firstID: 10, counter: counter)
+        var solver = makeSolver(scores: [5, 1, 9, 3], eliteCount: 2, counter: counter)
+        solver.mutationRate = 1
+        solver.mutationOperator = { ScoredIndividual(id: $0.id + 1000, score: $0.score, counter: $0.counter) }
         counter.calls = 0
 
-        let next = elitist(2)(old, new)
+        solver.step()
 
-        XCTAssertEqual(next.map(\.element.id), [3, 4, 10, 11, 12])
-        XCTAssertEqual(counter.calls, 0)
+        XCTAssertEqual(solver.currentPopulation.map(\.element.id), [2, 0, 1100, 1101], "The elite aren't mutated")
+        XCTAssertEqual(solver.currentPopulation.map(\.fitness), [9, 5, 0, 0])
+        XCTAssertEqual(counter.calls, 2, "Only the two mutated offspring are evaluated")
     }
 
-    func testEmptyPopulations() {
-        let some = individuals(scores: [1, 2])
+    // MARK: Offspring
 
-        XCTAssertEqual(elitist(2)([], some).map(\.element.id), [0, 1])
-        XCTAssertTrue(elitist(2)(some, []).isEmpty)
-        XCTAssertTrue(elitist(2)([], []).isEmpty)
+    /// Only `populationSize - eliteCount` offspring are created, so no
+    /// operator work is thrown away.
+    func testOnlyPopulationSizeMinusEliteCountOffspringAreCreated() {
+        var selections = 0
+        var mutations = 0
+        var solver = makeSolver(scores: Array(0 ..< 10), eliteCount: 3)
+        let selection = solver.selectionOperator
+        solver.selectionOperator = { selections += 1; return selection($0) }
+        solver.mutationRate = 1
+        solver.mutationOperator = { mutations += 1; return $0 }
+
+        solver.step()
+
+        XCTAssertEqual(selections, 4, "Pairs for 7 offspring")
+        XCTAssertEqual(mutations, 7)
+        XCTAssertEqual(solver.currentPopulation.count, 10)
     }
 
-    func testResultAlwaysHasTheSizeOfTheNewIndividuals() {
-        for oldCount in 0 ... 5 {
-            for newCount in 0 ... 5 {
-                for eliteCount in 0 ... 6 {
-                    let old = individuals(scores: Array(repeating: 1, count: oldCount))
-                    let new = individuals(scores: Array(repeating: 0, count: newCount), firstID: 100)
-                    XCTAssertEqual(
-                        elitist(eliteCount)(old, new).count,
-                        newCount,
-                        "old \(oldCount), new \(newCount), elite \(eliteCount)"
-                    )
-                }
-            }
+    /// With the largest allowed `eliteCount`, each generation still has one
+    /// new individual. An `eliteCount` equal to the population size used to
+    /// keep the population unchanged forever.
+    func testLargestEliteCountStillLetsTheRunImprove() {
+        var nextID = 0
+        var solver = GeneticSolver<ScoredIndividual>(
+            populationSize: 2,
+            mutationRate: 1,
+            eliteCount: 1,
+            selectionOperator: { population in
+                let fittest = population.max { $0.fitness < $1.fitness }!
+                return (fittest, fittest)
+            },
+            crossoverOperator: { [$0, $1] },
+            mutationOperator: { individual in
+                defer { nextID += 1 }
+                return ScoredIndividual(id: 100 + nextID, score: individual.score + 1)
+            },
+            replacementOperator: { _, new in new },
+            terminationCheck: { _, _ in false },
+            newElement: { ScoredIndividual(id: 0, score: 0) }
+        )
+
+        solver.solve(maxGenerations: 50)
+
+        XCTAssertEqual(solver.bestElement.fitness, 50, "One improvement per generation")
+        XCTAssertEqual(solver.currentPopulation.count, 2)
+    }
+
+    // MARK: Rules
+
+    func testEliteCountMustBeAtLeastZeroAndLessThanThePopulationSize() {
+        typealias Solver = GeneticSolver<ScoredIndividual>
+        XCTAssertNil(Solver.invalidEliteCountMessage(0, populationSize: 1))
+        XCTAssertNil(Solver.invalidEliteCountMessage(4, populationSize: 5))
+        for eliteCount in [5, 6, Int.max] {
+            XCTAssertEqual(
+                Solver.invalidEliteCountMessage(eliteCount, populationSize: 5),
+                "eliteCount must be at least 0 and less than populationSize (5), but is \(eliteCount)"
+            )
         }
+        for eliteCount in [-1, Int.min] {
+            XCTAssertEqual(
+                Solver.invalidEliteCountMessage(eliteCount, populationSize: 5),
+                "eliteCount must be at least 0 and less than populationSize (5), but is \(eliteCount)"
+            )
+        }
+    }
+
+    func testPopulationSizeMustBeGreaterThanTheEliteCount() {
+        typealias Solver = GeneticSolver<ScoredIndividual>
+        XCTAssertNil(Solver.invalidPopulationSizeMessage(3, eliteCount: 2))
+        XCTAssertNil(Solver.invalidPopulationSizeMessage(1, eliteCount: 0))
+        XCTAssertEqual(
+            Solver.invalidPopulationSizeMessage(2, eliteCount: 2),
+            "populationSize must be greater than eliteCount (2), but is 2"
+        )
+    }
+
+    func testInitReportsTheEliteCountAfterTheOtherParameters() {
+        typealias Solver = GeneticSolver<ScoredIndividual>
+        XCTAssertEqual(
+            Solver.invalidParameterMessage(populationSize: 4, crossoverRate: 0.5, mutationRate: 0.5, eliteCount: 4),
+            "eliteCount must be at least 0 and less than populationSize (4), but is 4"
+        )
+        XCTAssertEqual(
+            Solver.invalidParameterMessage(populationSize: 0, crossoverRate: 0.5, mutationRate: 0.5, eliteCount: 4),
+            "populationSize must be at least 1, but is 0"
+        )
+        XCTAssertNil(Solver.invalidParameterMessage(populationSize: 4, crossoverRate: 0.5, mutationRate: 0.5, eliteCount: 3))
+    }
+
+    func testEliteCountAndPopulationSizeCanChangeBetweenGenerations() {
+        var solver = makeSolver(scores: [5, 1, 9, 3], eliteCount: 0)
+
+        solver.eliteCount = 3
+        solver.step()
+        XCTAssertEqual(solver.currentPopulation.map(\.element.id), [2, 0, 3, 100])
+
+        solver.populationSize = 6
+        solver.eliteCount = 5
+        solver.step()
+        XCTAssertEqual(solver.currentPopulation.count, 6)
+        XCTAssertEqual(Array(solver.currentPopulation.map(\.element.id).prefix(4)), [2, 0, 3, 100], "All four carried over")
+
+        solver.eliteCount = 0
+        solver.populationSize = 1
+        solver.step()
+        XCTAssertEqual(solver.currentPopulation.count, 1)
     }
 
     // MARK: Elitism in the solver
 
     /// Mutation always produces an individual with score 0, so without
     /// elitism the best individual is lost after one generation.
-    func testElitismKeepsTheBestThatTheDefaultReplacementLoses() {
-        var withoutElitism = makeWorseningSolver()
-        var withElitism = makeWorseningSolver()
-        withElitism.replacementOperator = GeneticSolver.elitistReplacement(eliteCount: 1)
+    func testElitismKeepsTheBestThatIsOtherwiseLost() {
+        var withoutElitism = makeWorseningSolver(eliteCount: 0)
+        var withElitism = makeWorseningSolver(eliteCount: 1)
 
         withoutElitism.step()
         withElitism.step()
@@ -115,31 +179,79 @@ final class ElitismTests: XCTestCase {
     }
 
     func testBestFitnessNeverDecreasesWithElitism() {
-        let counter = FitnessCallCounter()
         var nextID = 0
         func random() -> ScoredIndividual {
             defer { nextID += 1 }
-            return ScoredIndividual(id: nextID, score: Int.random(in: 0 ... 1000), counter: counter)
+            return ScoredIndividual(id: nextID, score: Int.random(in: 0 ... 1000))
         }
         var solver = GeneticSolver<ScoredIndividual>(
             populationSize: 10,
             crossoverRate: 0.5,
             mutationRate: 1,
+            eliteCount: 2,
             selectionOperator: { ($0.randomElement()!, $0.randomElement()!) },
             crossoverOperator: { _, _ in [random(), random()] },
             mutationOperator: { _ in random() },
-            replacementOperator: GeneticSolver.elitistReplacement(eliteCount: 2),
+            replacementOperator: { _, new in new },
             terminationCheck: { _, _ in false },
             newElement: random
         )
 
-        var bestScores = [solver.bestElement.element.score]
+        var bestScores = [solver.bestElement.fitness]
         for _ in 0 ..< 200 {
             solver.step()
-            bestScores.append(solver.bestElement.element.score)
+            bestScores.append(solver.bestElement.fitness)
         }
 
         XCTAssertEqual(bestScores, bestScores.sorted(), "The best score must never go down")
+    }
+
+    func testReplacementReceivesTheEliteFirst() {
+        var received: [Int] = []
+        var solver = makeSolver(scores: [5, 1, 9, 3], eliteCount: 1)
+        solver.replacementOperator = { _, new in
+            received = new.map(\.element.id)
+            return new
+        }
+
+        solver.step()
+
+        XCTAssertEqual(received, [2, 100, 101, 102])
+    }
+
+    func testOperatorsInitializerTakesTheEliteCount() {
+        let solver = GeneticSolver(
+            populationSize: 5,
+            eliteCount: 2,
+            operators: ScoredDefaultOperators.self,
+            terminationCheck: { _, _ in false }
+        )
+
+        XCTAssertEqual(solver.eliteCount, 2)
+    }
+
+    // MARK: fittest(_:of:)
+
+    func testFittestReturnsTheFittestInOrderAndKeepsTiesInPopulationOrder() {
+        let population = evaluated(scores: [3, 8, 1, 8, 5])
+        typealias Solver = GeneticSolver<ScoredIndividual>
+
+        XCTAssertEqual(Solver.fittest(3, of: population).map(\.element.id), [1, 3, 4])
+        XCTAssertEqual(Solver.fittest(1, of: population).map(\.element.id), [1])
+        XCTAssertEqual(Solver.fittest(5, of: population).map(\.element.id), [1, 3, 4, 0, 2])
+        XCTAssertEqual(Solver.fittest(9, of: population).map(\.element.id), [1, 3, 4, 0, 2], "Not more than there are")
+        XCTAssertTrue(Solver.fittest(0, of: population).isEmpty)
+        XCTAssertTrue(Solver.fittest(2, of: []).isEmpty)
+    }
+
+    func testFittestEvaluatesNothing() {
+        let counter = FitnessCallCounter()
+        let population = evaluated(scores: [3, 8, 1, 8, 5], counter: counter)
+        counter.calls = 0
+
+        _ = GeneticSolver<ScoredIndividual>.fittest(3, of: population)
+
+        XCTAssertEqual(counter.calls, 0)
     }
 
     // MARK: bestElement
@@ -175,28 +287,36 @@ final class ElitismTests: XCTestCase {
 
     // MARK: Helpers
 
-    private func elitist(_ eliteCount: Int) -> ReplacementOperator<ScoredIndividual> {
-        GeneticSolver<ScoredIndividual>.elitistReplacement(eliteCount: eliteCount)
+    /// Individuals with the given scores and ids from 0, evaluated (one
+    /// `fitness()` call each).
+    private func evaluated(scores: [Int], counter: FitnessCallCounter = FitnessCallCounter()) -> [EvaluatedElement<ScoredIndividual>] {
+        scores.enumerated().map { EvaluatedElement(ScoredIndividual(id: $0.offset, score: $0.element, counter: counter)) }
     }
 
-    /// Individuals with the given scores, evaluated (one `fitness()` call each).
-    private func individuals(
+    /// A solver whose starting population has the given scores, in order,
+    /// with ids from 0. Selection picks the first individual twice, and
+    /// crossover, applied to every pair, makes children numbered from 100
+    /// with score 0.
+    private func makeSolver(
         scores: [Int],
-        firstID: Int = 0,
+        eliteCount: Int = 0,
         counter: FitnessCallCounter = FitnessCallCounter()
     )
-        -> [EvaluatedElement<ScoredIndividual>]
+        -> GeneticSolver<ScoredIndividual>
     {
-        scores.enumerated().map { EvaluatedElement(ScoredIndividual(id: firstID + $0.offset, score: $0.element, counter: counter)) }
-    }
-
-    /// A solver whose starting population has the given scores, in order.
-    private func makeSolver(scores: [Int], counter: FitnessCallCounter = FitnessCallCounter()) -> GeneticSolver<ScoredIndividual> {
         var remaining = scores.enumerated().map { ScoredIndividual(id: $0.offset, score: $0.element, counter: counter) }[...]
+        var nextChild = 100
+        func child() -> ScoredIndividual {
+            defer { nextChild += 1 }
+            return ScoredIndividual(id: nextChild, score: 0, counter: counter)
+        }
         return GeneticSolver<ScoredIndividual>(
             populationSize: scores.count,
+            crossoverRate: 1,
+            mutationRate: 0,
+            eliteCount: eliteCount,
             selectionOperator: { ($0[0], $0[0]) },
-            crossoverOperator: { [$0, $1] },
+            crossoverOperator: { _, _ in [child(), child()] },
             mutationOperator: { $0 },
             replacementOperator: { _, new in new },
             terminationCheck: { _, _ in false },
@@ -204,10 +324,12 @@ final class ElitismTests: XCTestCase {
         )
     }
 
-    /// A solver whose starting scores are [2, 9, 4, 1] and whose mutation,
-    /// applied to every child, produces score 0.
-    private func makeWorseningSolver() -> GeneticSolver<ScoredIndividual> {
-        var solver = makeSolver(scores: [2, 9, 4, 1])
+    /// A solver whose starting scores are [2, 9, 4, 1], whose crossover is
+    /// never applied, and whose mutation, applied to every new individual,
+    /// produces score 0.
+    private func makeWorseningSolver(eliteCount: Int) -> GeneticSolver<ScoredIndividual> {
+        var solver = makeSolver(scores: [2, 9, 4, 1], eliteCount: eliteCount)
+        solver.crossoverRate = 0
         solver.mutationRate = 1
         solver.mutationOperator = { ScoredIndividual(id: 100 + $0.id, score: 0, counter: $0.counter) }
         return solver

@@ -13,9 +13,13 @@ public struct GeneticSolver<Element: GeneticElement> {
     // Parameters, checked by `init` and whenever they are set: a value out of
     // range stops the program right there, with a message
 
-    /// The number of individuals in each generation. Must be at least 1.
+    /// The number of individuals in each generation. Must be at least 1, and
+    /// greater than `eliteCount`.
     public var populationSize: Int {
-        didSet { Self.stop(ifInvalid: Self.invalidPopulationSizeMessage(populationSize)) }
+        didSet {
+            Self.stop(ifInvalid: Self.invalidPopulationSizeMessage(populationSize)
+                ?? Self.invalidPopulationSizeMessage(populationSize, eliteCount: eliteCount))
+        }
     }
 
     /// The probability, from 0 to 1, that `crossoverOperator` is applied to a
@@ -28,6 +32,22 @@ public struct GeneticSolver<Element: GeneticElement> {
     /// each individual of the next generation.
     public var mutationRate: Double {
         didSet { Self.stop(ifInvalid: Self.invalidRateMessage("mutationRate", mutationRate)) }
+    }
+
+    /// How many of the fittest individuals each generation carries into the
+    /// next one unchanged: not selected, crossed over or mutated, and not
+    /// evaluated again. The rest of the next generation,
+    /// `populationSize - eliteCount` individuals, are offspring.
+    ///
+    /// With an `eliteCount` of at least 1, the best fitness never gets worse
+    /// and `bestElement` is the best individual found so far. It must be at
+    /// least 0 and less than `populationSize`, so that every generation has
+    /// at least one new individual; the default is 0.
+    ///
+    /// The elite come first among the new individuals that
+    /// `replacementOperator` receives, followed by the offspring.
+    public var eliteCount: Int {
+        didSet { Self.stop(ifInvalid: Self.invalidEliteCountMessage(eliteCount, populationSize: populationSize)) }
     }
 
     // Operators, which can be replaced at any time
@@ -119,9 +139,8 @@ public struct GeneticSolver<Element: GeneticElement> {
     /// already has, without calling `fitness()`.
     ///
     /// The default replacement operator replaces the whole population, so the
-    /// best individual found so far can be lost. With
-    /// `elitistReplacement(eliteCount:)` (and an `eliteCount` of at least 1),
-    /// this is always the best individual found so far.
+    /// best individual found so far can be lost. With an `eliteCount` of at
+    /// least 1, this is always the best individual found so far.
     public var bestElement: EvaluatedElement<Element> {
         // The population is never empty: `populationSize` is at least 1 and
         // `step()` stops if a replacement operator returns no individuals.
@@ -136,12 +155,14 @@ public struct GeneticSolver<Element: GeneticElement> {
     /// `populationSize` times and evaluating each new individual's fitness
     /// once, and `terminationCheck` is called once for it.
     ///
-    /// - Precondition: `populationSize` is at least 1, and `crossoverRate` and
-    ///   `mutationRate` are between 0 and 1.
+    /// - Precondition: `populationSize` is at least 1, `crossoverRate` and
+    ///   `mutationRate` are between 0 and 1, and `eliteCount` is at least 0
+    ///   and less than `populationSize`.
     public init(
         populationSize: Int,
         crossoverRate: Double = 0.7,
         mutationRate: Double = 0.01,
+        eliteCount: Int = 0,
         selectionOperator: @escaping SelectionOperator<Element>,
         crossoverOperator: @escaping CrossoverOperator<Element>,
         mutationOperator: @escaping MutationOperator<Element>,
@@ -152,6 +173,7 @@ public struct GeneticSolver<Element: GeneticElement> {
         self.populationSize = populationSize
         self.crossoverRate = crossoverRate
         self.mutationRate = mutationRate
+        self.eliteCount = eliteCount
         self.selectionOperator = selectionOperator
         self.crossoverOperator = crossoverOperator
         self.mutationOperator = mutationOperator
@@ -163,7 +185,8 @@ public struct GeneticSolver<Element: GeneticElement> {
         Self.stop(ifInvalid: Self.invalidParameterMessage(
             populationSize: populationSize,
             crossoverRate: crossoverRate,
-            mutationRate: mutationRate
+            mutationRate: mutationRate,
+            eliteCount: eliteCount
         ))
 
         let initialPopulation = (0 ..< populationSize).map { _ in EvaluatedElement(newElement()) }
@@ -175,12 +198,37 @@ public struct GeneticSolver<Element: GeneticElement> {
     // MARK: Static Functions
 
     /// Returns a description of the first parameter that is out of range, or
-    /// `nil` when `populationSize` is at least 1 and both rates are between 0
-    /// and 1. NaN and infinite rates are out of range.
-    static func invalidParameterMessage(populationSize: Int, crossoverRate: Double, mutationRate: Double) -> String? {
+    /// `nil` when `populationSize` is at least 1, both rates are between 0
+    /// and 1, and `eliteCount` is at least 0 and less than `populationSize`.
+    /// NaN and infinite rates are out of range.
+    static func invalidParameterMessage(
+        populationSize: Int,
+        crossoverRate: Double,
+        mutationRate: Double,
+        eliteCount: Int = 0
+    )
+        -> String?
+    {
         invalidPopulationSizeMessage(populationSize)
             ?? invalidRateMessage("crossoverRate", crossoverRate)
             ?? invalidRateMessage("mutationRate", mutationRate)
+            ?? invalidEliteCountMessage(eliteCount, populationSize: populationSize)
+    }
+
+    /// Returns why `eliteCount` is out of range, or `nil` when it is at least
+    /// 0 and less than `populationSize`.
+    static func invalidEliteCountMessage(_ eliteCount: Int, populationSize: Int) -> String? {
+        (0 ..< populationSize).contains(eliteCount)
+            ? nil
+            : "eliteCount must be at least 0 and less than populationSize (\(populationSize)), but is \(eliteCount)"
+    }
+
+    /// Returns why `populationSize` is too small for `eliteCount`, or `nil`
+    /// when it is greater.
+    static func invalidPopulationSizeMessage(_ populationSize: Int, eliteCount: Int) -> String? {
+        populationSize > eliteCount
+            ? nil
+            : "populationSize must be greater than eliteCount (\(eliteCount)), but is \(populationSize)"
     }
 
     /// Returns why `populationSize` is out of range, or `nil` when it is at
@@ -254,15 +302,21 @@ public struct GeneticSolver<Element: GeneticElement> {
     /// once for the new population, and returns the result. It doesn't call
     /// the check before running the generation; see `checkTermination()`.
     ///
-    /// Each new individual has its fitness evaluated once, after mutation. A
-    /// parent that is copied unchanged (crossover skipped or returning no
-    /// children, and no mutation) keeps the fitness it already has.
+    /// With an `eliteCount` above 0, the fittest individuals are carried
+    /// over unchanged and only `populationSize - eliteCount` offspring are
+    /// created. Each new individual has its fitness evaluated once, after
+    /// mutation. A parent that is copied unchanged (crossover skipped or
+    /// returning no children, and no mutation) keeps the fitness it already
+    /// has.
     @discardableResult
     public mutating func step() -> Bool {
         guard !isTerminated else { return true }
+        // Elitism
+        let elite = Self.fittest(eliteCount, of: currentPopulation)
+        let offspringCount = populationSize - elite.count
         // Selection & Crossover
         var offspring: [Offspring] = []
-        while offspring.count < populationSize {
+        while offspring.count < offspringCount {
             let (parent1, parent2) = selectionOperator(currentPopulation)
             let children = Double.random(in: 0 ..< 1, using: &randomNumberGenerator) < crossoverRate
                 ? crossoverOperator(parent1.element, parent2.element)
@@ -275,7 +329,7 @@ public struct GeneticSolver<Element: GeneticElement> {
                 offspring += children.map { .new($0) }
             }
         }
-        offspring = Array(offspring.prefix(populationSize))
+        offspring = Array(offspring.prefix(offspringCount))
         // Mutation
         let mutated: [Offspring] = offspring.map { candidate in
             Double.random(in: 0 ..< 1, using: &randomNumberGenerator) < mutationRate
@@ -283,7 +337,7 @@ public struct GeneticSolver<Element: GeneticElement> {
                 : candidate
         }
         // Evaluation: once for each individual that isn't an unchanged copy
-        let newIndividuals = mutated.map(\.evaluated)
+        let newIndividuals = elite + mutated.map(\.evaluated)
         // Replacement
         currentPopulation = replacementOperator(currentPopulation, newIndividuals)
         if currentPopulation.isEmpty {

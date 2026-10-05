@@ -62,10 +62,11 @@ final class GeneticElementTests: XCTestCase {
         var nextValue = 0
         var solver = GeneticSolver<Minimal>(
             populationSize: 4,
+            eliteCount: 1,
             selectionOperator: { ($0[0], $0[1]) },
             crossoverOperator: { [$0, $1] },
             mutationOperator: { Minimal(value: $0.value + 10) },
-            replacementOperator: GeneticSolver.elitistReplacement(eliteCount: 1),
+            replacementOperator: { _, new in new },
             terminationCheck: { generation, _ in generation >= 3 },
             newElement: {
                 defer { nextValue += 1 }

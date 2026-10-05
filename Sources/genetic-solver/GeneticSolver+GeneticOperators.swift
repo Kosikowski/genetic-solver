@@ -23,6 +23,7 @@ public extension GeneticSolver {
         populationSize: Int,
         crossoverRate: Double = 0.7,
         mutationRate: Double = 0.01,
+        eliteCount: Int = 0,
         operators _: Operators.Type,
         terminationCheck: @escaping TerminationCheck<Element>
     ) where Operators.Element == Element {
@@ -30,6 +31,7 @@ public extension GeneticSolver {
             populationSize: populationSize,
             crossoverRate: crossoverRate,
             mutationRate: mutationRate,
+            eliteCount: eliteCount,
             selectionOperator: { Operators.selectionOperator(population: $0) },
             crossoverOperator: { Operators.crossoverOperator(parent1: $0, parent2: $1) },
             mutationOperator: { Operators.mutationOperator(element: $0) },

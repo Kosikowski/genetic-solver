@@ -68,11 +68,11 @@ actor Optimizer {
             populationSize: 20,
             crossoverRate: 0.8,
             mutationRate: 0.3,
+            eliteCount: 1,
             operators: Operators.self,
             terminationCheck: { _, population in population.contains { $0.fitness >= 70 } }
         )
         solver.selectionOperator = GeneticSolver.tournamentSelection(using: SeededRandomNumberGenerator(seed: seed))
-        solver.replacementOperator = GeneticSolver.elitistReplacement(eliteCount: 1)
         solver.randomNumberGenerator = SeededRandomNumberGenerator(seed: seed &+ 1)
         self.solver = solver
     }

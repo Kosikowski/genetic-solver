@@ -165,7 +165,7 @@ final class EvaluationTests: XCTestCase {
 
     // MARK: Consumers of fitness
 
-    /// Selection, replacement, the termination check and bestElement all read
+    /// Selection, elitism, the termination check and bestElement all read
     /// the stored fitness, so over a whole run each individual is evaluated
     /// exactly once, however often they look at it.
     func testOperatorsTerminationCheckAndBestElementDoNotEvaluate() {
@@ -174,10 +174,11 @@ final class EvaluationTests: XCTestCase {
             populationSize: 20,
             crossoverRate: 0.7,
             mutationRate: 0.2,
+            eliteCount: 2,
             selectionOperator: GeneticSolver.tournamentSelection(using: SeededRandomNumberGenerator(seed: 1)),
             crossoverOperator: { first, second in [log.make(score: (first.score + second.score) / 2), log.make(score: first.score)] },
             mutationOperator: { log.make(score: $0.score + 1) },
-            replacementOperator: GeneticSolver.elitistReplacement(eliteCount: 2),
+            replacementOperator: { _, new in new },
             terminationCheck: { _, population in population.allSatisfy { $0.fitness >= 1_000_000 } },
             newElement: { log.make(score: 0) }
         )

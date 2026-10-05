@@ -27,7 +27,7 @@ This cycle repeats until the termination condition is satisfied, gradually impro
 - **Generic Design**: Works with any type that conforms to `GeneticElement`
 - **Customizable Operators**: Full control over selection, crossover, mutation, and replacement strategies
 - **Protocol-Based Design**: Uses `GeneticOperators` protocol for clean separation of concerns
-- **Default Implementations**: Built-in tournament selection and elitist replacement, and a default for every operator
+- **Default Implementations**: Built-in tournament selection and elitism, and a default for every operator
 - **Fitness Evaluated Once**: The solver evaluates each individual's fitness once and passes it to the operators along with the individual
 - **Type Safety**: Leverages Swift's type system for compile-time safety
 - **Extensible**: Easy to extend with custom operators and termination conditions
@@ -279,25 +279,26 @@ func stallTermination(patience: Int) -> TerminationCheck<MyIndividual> {
 solver.terminationCheck = stallTermination(patience: 10)
 ```
 
-### Elitism Replacement
+### Elitism
 
-The default replacement replaces the whole population, so the best individual found so far can be lost in the next generation. Elitist replacement carries the fittest individuals of each generation into the next one, so the best fitness never gets worse and `solver.bestElement` is always the best individual found so far:
+By default each generation replaces the whole population, so the best individual found so far can be lost in the next generation. With an `eliteCount`, the solver carries that many of the fittest individuals into the next generation unchanged, so the best fitness never gets worse and `solver.bestElement` is always the best individual found so far:
 
 ```swift
 var solver = GeneticSolver<MyIndividual>(
     populationSize: 50,
     crossoverRate: 0.8,
     mutationRate: 0.1,
+    eliteCount: 2, // Keep the 2 fittest
     selectionOperator: selection,
     crossoverOperator: crossover,
     mutationOperator: mutation,
-    replacementOperator: GeneticSolver.elitistReplacement(eliteCount: 2), // Keep the 2 fittest
+    replacementOperator: { _, new in new },
     terminationCheck: { _, population in population.contains { $0.fitness >= 950 } },
     newElement: { MyIndividual(genes: (0..<10).map { _ in Int.random(in: 0...100) }) }
 )
 ```
 
-The elite replace the last new individuals, so the population size doesn't change. Elitist replacement uses the fitness the solver has already evaluated.
+The rest of each generation, `populationSize - eliteCount` individuals, are offspring, so the population size doesn't change. The elite aren't mutated or evaluated again, and they come first among the new individuals that the replacement operator receives. `eliteCount` can also be set on a running solver; it must be less than `populationSize`, so that every generation has at least one new individual.
 
 ### Reproducible Runs
 
@@ -378,7 +379,7 @@ let rouletteSelection: SelectionOperator<MyIndividual> = { population in
 
 - `currentPopulation`: The current population, each individual with its fitness
 - `currentGeneration`: The number of generations run since `init` or the last `reset()`
-- `bestElement`: The fittest individual in the current population, with its fitness (with elitist replacement, the best found so far)
+- `bestElement`: The fittest individual in the current population, with its fitness (with an `eliteCount` of at least 1, the best found so far)
 - `isTerminated`: The result of the latest termination check
 - `checkTermination()`: Calls the termination check again for the current population and updates `isTerminated`, for checks that depend on state outside the solver
 - `randomNumberGenerator`: The generator for the solver's decisions about applying crossover and mutation (the system generator unless you set one)
@@ -388,7 +389,7 @@ let rouletteSelection: SelectionOperator<MyIndividual> = { population in
 
 ### Parameter Rules
 
-`populationSize` must be at least 1, and `crossoverRate` and `mutationRate` must be between 0 and 1; when you don't pass them, the rates are 0.7 and 0.01. The solver checks them in `init` and whenever you set one, and stops the program right there with a message such as `crossoverRate must be between 0 and 1, but is 1.5` when one is out of range. A replacement operator must return at least one individual.
+`populationSize` must be at least 1, `crossoverRate` and `mutationRate` must be between 0 and 1, and `eliteCount` must be at least 0 and less than `populationSize`; when you don't pass them, the rates are 0.7 and 0.01 and `eliteCount` is 0. The solver checks them in `init` and whenever you set one, and stops the program right there with a message such as `crossoverRate must be between 0 and 1, but is 1.5` when one is out of range. A replacement operator must return at least one individual.
 
 ### Random Numbers
 
@@ -409,7 +410,7 @@ The `GeneticOperators` protocol provides default implementations for all genetic
 - `selectionOperator`: Tournament selection with tournament size of 3; `GeneticSolver.tournamentSelection(tournamentSize:using:)` takes another size and a random number generator
 - `crossoverOperator`: Returns parents unchanged (no crossover)
 - `mutationOperator`: Returns element unchanged (no mutation)
-- `replacementOperator`: Generational replacement (replace all, so the best individual can be lost); `GeneticSolver.elitistReplacement(eliteCount:)` keeps the fittest
+- `replacementOperator`: Generational replacement (replace all, so the best individual can be lost unless the solver's `eliteCount` keeps the fittest)
 - `fixedGenerationTermination`: Stop after fixed number of generations
 - `newElement`: Must be implemented by conforming types
 

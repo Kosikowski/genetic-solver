@@ -590,17 +590,18 @@ final class ReadmeExamplesTests: XCTestCase {
         XCTAssertEqual(solver.currentPopulation.count, 20)
     }
 
-    // MARK: Elitism Replacement
+    // MARK: Elitism
 
     func testElitismExampleKeepsTheBestAndReachesTheTarget() {
         var solver = GeneticSolver<MyIndividual>(
             populationSize: 50,
             crossoverRate: 0.8,
             mutationRate: 0.1,
+            eliteCount: 2, // Keep the 2 fittest
             selectionOperator: ReadmeQuickStart.selection,
             crossoverOperator: ReadmeQuickStart.crossover,
             mutationOperator: ReadmeQuickStart.mutation,
-            replacementOperator: GeneticSolver.elitistReplacement(eliteCount: 2), // Keep the 2 fittest
+            replacementOperator: { _, new in new },
             terminationCheck: { _, population in population.contains { $0.fitness >= 950 } },
             newElement: { MyIndividual(genes: (0 ..< 10).map { _ in Int.random(in: 0 ... 100) }) }
         )
