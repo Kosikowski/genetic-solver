@@ -12,6 +12,13 @@ on:
 permissions:
   contents: read
 
+# A new push to a pull request cancels the runs for its earlier pushes.
+# Other runs (pushes to main, tags, calls from the Release workflow) each get
+# a group of their own, so they are never cancelled or held back.
+concurrency:
+  group: swiftformat-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   swiftformat:
     runs-on: ubuntu-latest
