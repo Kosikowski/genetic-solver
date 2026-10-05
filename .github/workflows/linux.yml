@@ -14,21 +14,21 @@ on:
 permissions:
   contents: read
 
+# The jobs run in the official Swift images, the same ones
+# scripts/test-linux.sh uses locally. That way they don't depend on the
+# Ubuntu version of ubuntu-latest (Swift 5.9 was never released for Ubuntu
+# 24.04 or later) or on a toolchain installer.
 jobs:
   build-linux:
     runs-on: ubuntu-latest
     name: Build and Test (Linux)
+    container: swift:${{ matrix.swift-version }}
     strategy:
       matrix:
-        swift-version: [5.9, 6.1.2]
+        swift-version: ['5.9', '6.1.2']
 
     steps:
       - uses: actions/checkout@v6
-
-      - name: Install Swift
-        uses: SwiftyLab/setup-swift@9014d4136569075c696d4151c7810ecde8712907 # v1.14.1
-        with:
-          swift-version: ${{ matrix.swift-version }}
 
       - name: Show Swift version
         run: swift --version
@@ -42,17 +42,13 @@ jobs:
   build-linux-release:
     runs-on: ubuntu-latest
     name: Build and Test (Linux Release)
+    container: swift:${{ matrix.swift-version }}
     strategy:
       matrix:
-        swift-version: [5.9, 6.1.2]
+        swift-version: ['5.9', '6.1.2']
 
     steps:
       - uses: actions/checkout@v6
-
-      - name: Install Swift
-        uses: SwiftyLab/setup-swift@9014d4136569075c696d4151c7810ecde8712907 # v1.14.1
-        with:
-          swift-version: ${{ matrix.swift-version }}
 
       - name: Show Swift version
         run: swift --version
