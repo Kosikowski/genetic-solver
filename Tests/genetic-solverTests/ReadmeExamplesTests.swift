@@ -85,6 +85,49 @@ private enum ReadmeQuickStart {
     }
 }
 
+// MARK: - Custom Termination Conditions
+
+/// `stallTermination(patience:)` from the README's Custom Termination
+/// Conditions section.
+private func stallTermination(patience: Int) -> TerminationCheck<MyIndividual> {
+    var bestSoFar = -Double.infinity
+    var generationsWithoutImprovement = 0
+    return { generation, population in
+        // A new run, for example after `reset()`, starts again at generation 0.
+        if generation == 0 {
+            bestSoFar = -Double.infinity
+            generationsWithoutImprovement = 0
+        }
+        let currentBest = population.map { $0.fitness() }.max() ?? -Double.infinity
+        if currentBest > bestSoFar {
+            bestSoFar = currentBest
+            generationsWithoutImprovement = 0
+        } else {
+            generationsWithoutImprovement += 1
+        }
+        return generationsWithoutImprovement >= patience
+    }
+}
+
+/// A solver whose operators involve no randomness: selection picks the first
+/// two individuals and nothing else changes them, so the best fitness never
+/// improves after the starting population.
+private func makeStallingSolver(terminationCheck: @escaping TerminationCheck<MyIndividual>) -> GeneticSolver<MyIndividual> {
+    var nextValue = 0
+    return GeneticSolver<MyIndividual>(
+        populationSize: 4,
+        selectionOperator: { ($0[0], $0[1]) },
+        crossoverOperator: { [$0, $1] },
+        mutationOperator: { $0 },
+        replacementOperator: { _, new in new },
+        terminationCheck: terminationCheck,
+        newElement: {
+            defer { nextValue = (nextValue + 1) % 4 }
+            return MyIndividual(genes: [nextValue])
+        }
+    )
+}
+
 // MARK: - ReadmeExamplesTests
 
 final class ReadmeExamplesTests: XCTestCase {
@@ -169,5 +212,60 @@ final class ReadmeExamplesTests: XCTestCase {
             XCTAssertLessThanOrEqual(changed.count, 1)
             XCTAssertTrue(mutant.genes.allSatisfy { ReadmeQuickStart.geneRange.contains($0) })
         }
+    }
+
+    // MARK: Custom Termination Conditions
+
+    func testStallTerminationStopsAfterPatienceGenerationsWithoutImprovement() {
+        var solver = makeStallingSolver(terminationCheck: stallTermination(patience: 3))
+
+        _ = solver.solve(maxGenerations: 100)
+
+        XCTAssertEqual(solver.currentGeneration, 3)
+        XCTAssertTrue(solver.isTerminated)
+    }
+
+    func testStallTerminationCountResetsWhenFitnessImproves() {
+        let check = stallTermination(patience: 3)
+        let bestFitnessPerGeneration = [5, 5, 6, 6, 6, 6]
+
+        let results = bestFitnessPerGeneration.enumerated().map { generation, best in
+            check(generation, [MyIndividual(genes: [best])])
+        }
+
+        // 5 (first), 5 (1 without improvement), 6 (improved), then 1, 2, 3.
+        XCTAssertEqual(results, [false, false, false, false, false, true])
+    }
+
+    func testStallTerminationWithZeroPatienceStopsImmediately() {
+        let solver = makeStallingSolver(terminationCheck: stallTermination(patience: 0))
+
+        XCTAssertTrue(solver.isTerminated)
+        XCTAssertEqual(solver.currentGeneration, 0)
+    }
+
+    func testStallTerminationStartsOverAfterReset() {
+        var solver = makeStallingSolver(terminationCheck: stallTermination(patience: 3))
+        _ = solver.solve(maxGenerations: 100)
+        XCTAssertTrue(solver.isTerminated)
+
+        // The new population is no better than the old one, so without the
+        // generation-0 reset in the check the count would carry over and the
+        // solver would stay terminated.
+        solver.reset()
+        XCTAssertFalse(solver.isTerminated)
+
+        _ = solver.solve(maxGenerations: 100)
+        XCTAssertEqual(solver.currentGeneration, 3)
+    }
+
+    func testStallTerminationAssignedMidRunStartsCountingFromThatGeneration() {
+        var solver = makeStallingSolver(terminationCheck: { _, _ in false })
+        _ = solver.solve(maxGenerations: 5)
+
+        solver.terminationCheck = stallTermination(patience: 3)
+        _ = solver.solve(maxGenerations: 100)
+
+        XCTAssertEqual(solver.currentGeneration, 8)
     }
 }

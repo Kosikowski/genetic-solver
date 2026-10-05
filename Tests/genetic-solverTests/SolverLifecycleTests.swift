@@ -7,22 +7,6 @@
 import XCTest
 @testable import genetic_solver
 
-// MARK: - ElementFactory
-
-/// Creates test individuals with increasing ids and counts how many it made.
-private final class ElementFactory {
-    // MARK: Properties
-
-    private(set) var createdCount = 0
-
-    // MARK: Functions
-
-    func make() -> TestIndividual {
-        defer { createdCount += 1 }
-        return TestIndividual(gene: .zero, id: createdCount)
-    }
-}
-
 // MARK: - SolverLifecycleTests
 
 final class SolverLifecycleTests: XCTestCase {
@@ -30,7 +14,7 @@ final class SolverLifecycleTests: XCTestCase {
 
     func testInitCreatesOnePopulation() {
         let factory = ElementFactory()
-        let solver = makeSolver(populationSize: 5, factory: factory)
+        let solver = makeDeterministicSolver(populationSize: 5, factory: factory)
 
         XCTAssertEqual(factory.createdCount, 5)
         XCTAssertEqual(solver.currentPopulation.map(\.id), [0, 1, 2, 3, 4])
@@ -41,7 +25,7 @@ final class SolverLifecycleTests: XCTestCase {
 
     func testSolveUsesThePopulationCreatedByInit() {
         let factory = ElementFactory()
-        var solver = makeSolver(factory: factory)
+        var solver = makeDeterministicSolver(factory: factory)
 
         let result = solver.solve(maxGenerations: 1)
 
@@ -52,7 +36,7 @@ final class SolverLifecycleTests: XCTestCase {
 
     func testSolveWithZeroMaxGenerationsReturnsTheCurrentPopulationUnchanged() {
         let factory = ElementFactory()
-        var solver = makeSolver(factory: factory)
+        var solver = makeDeterministicSolver(factory: factory)
 
         let result = solver.solve(maxGenerations: 0)
 
@@ -63,7 +47,7 @@ final class SolverLifecycleTests: XCTestCase {
 
     func testSolveWithNegativeMaxGenerationsRunsNothing() {
         let factory = ElementFactory()
-        var solver = makeSolver(factory: factory)
+        var solver = makeDeterministicSolver(factory: factory)
 
         let result = solver.solve(maxGenerations: -5)
 
@@ -73,7 +57,7 @@ final class SolverLifecycleTests: XCTestCase {
 
     func testSolveContinuesAfterStep() {
         let factory = ElementFactory()
-        var solver = makeSolver(factory: factory)
+        var solver = makeDeterministicSolver(factory: factory)
 
         solver.step()
         solver.step()
@@ -87,7 +71,7 @@ final class SolverLifecycleTests: XCTestCase {
 
     func testSolveDoesNothingWhenMaxGenerationsAlreadyReached() {
         let factory = ElementFactory()
-        var solver = makeSolver(factory: factory)
+        var solver = makeDeterministicSolver(factory: factory)
         solver.step()
         solver.step()
         solver.step()
@@ -101,7 +85,7 @@ final class SolverLifecycleTests: XCTestCase {
 
     func testSecondSolveContinuesFromTheFirst() {
         let factory = ElementFactory()
-        var solver = makeSolver(factory: factory)
+        var solver = makeDeterministicSolver(factory: factory)
 
         _ = solver.solve(maxGenerations: 2)
         _ = solver.solve(maxGenerations: 2)
@@ -113,7 +97,7 @@ final class SolverLifecycleTests: XCTestCase {
     }
 
     func testSolveReturnsTheCurrentPopulation() {
-        var solver = makeSolver(factory: ElementFactory())
+        var solver = makeDeterministicSolver(factory: ElementFactory())
 
         let result = solver.solve(maxGenerations: 3)
 
@@ -122,7 +106,7 @@ final class SolverLifecycleTests: XCTestCase {
 
     func testSolveStopsAtTerminationAndKeepsThatState() {
         let factory = ElementFactory()
-        var solver = makeSolver(factory: factory, terminationCheck: { generation, _ in generation >= 2 })
+        var solver = makeDeterministicSolver(factory: factory, terminationCheck: { generation, _ in generation >= 2 })
 
         _ = solver.solve(maxGenerations: 10)
         XCTAssertEqual(solver.currentGeneration, 2)
@@ -136,7 +120,7 @@ final class SolverLifecycleTests: XCTestCase {
 
     func testResetCreatesANewPopulationAndRestartsTheGenerationCount() {
         let factory = ElementFactory()
-        var solver = makeSolver(factory: factory)
+        var solver = makeDeterministicSolver(factory: factory)
         _ = solver.solve(maxGenerations: 3)
 
         solver.reset()
@@ -148,7 +132,7 @@ final class SolverLifecycleTests: XCTestCase {
 
     func testResetUsesTheCurrentPopulationSize() {
         let factory = ElementFactory()
-        var solver = makeSolver(populationSize: 4, factory: factory)
+        var solver = makeDeterministicSolver(populationSize: 4, factory: factory)
 
         solver.populationSize = 6
         solver.reset()
@@ -157,7 +141,7 @@ final class SolverLifecycleTests: XCTestCase {
     }
 
     func testResetUsesTheCurrentNewElementClosure() {
-        var solver = makeSolver(factory: ElementFactory())
+        var solver = makeDeterministicSolver(factory: ElementFactory())
 
         solver.newElement = { TestIndividual(gene: .one, id: -1) }
         solver.reset()
@@ -167,7 +151,7 @@ final class SolverLifecycleTests: XCTestCase {
 
     func testSolveAfterResetRunsFromGenerationZero() {
         let factory = ElementFactory()
-        var solver = makeSolver(factory: factory, terminationCheck: { generation, _ in generation >= 2 })
+        var solver = makeDeterministicSolver(factory: factory, terminationCheck: { generation, _ in generation >= 2 })
         _ = solver.solve(maxGenerations: 10)
 
         solver.reset()
@@ -175,28 +159,5 @@ final class SolverLifecycleTests: XCTestCase {
 
         XCTAssertEqual(solver.currentGeneration, 2)
         XCTAssertEqual(result.map(\.id), [4, 5, 4, 5])
-    }
-
-    // MARK: Helpers
-
-    /// A solver whose operators involve no randomness: selection always picks
-    /// the first two individuals, and crossover and mutation return their
-    /// input unchanged, so each generation is `[p0, p1, p0, p1, ...]`.
-    private func makeSolver(
-        populationSize: Int = 4,
-        factory: ElementFactory,
-        terminationCheck: @escaping TerminationCheck<TestIndividual> = { _, _ in false }
-    )
-        -> GeneticSolver<TestIndividual>
-    {
-        GeneticSolver<TestIndividual>(
-            populationSize: populationSize,
-            selectionOperator: { ($0[0], $0[1]) },
-            crossoverOperator: { [$0, $1] },
-            mutationOperator: { $0 },
-            replacementOperator: { _, new in new },
-            terminationCheck: terminationCheck,
-            newElement: factory.make
-        )
     }
 }

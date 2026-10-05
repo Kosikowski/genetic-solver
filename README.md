@@ -258,16 +258,33 @@ _ = solver.solve(maxGenerations: 100)  // A fresh run
 
 ### Custom Termination Conditions
 
+The solver calls the termination check exactly once for each population: the one created by `init` or `reset()`, and the one produced by each generation. Assigning a new check to `terminationCheck` calls it once for the current population. The latest result is available as `solver.isTerminated`.
+
+Because each population is checked exactly once, a check can keep its own state. This one stops when the best fitness hasn't improved for a number of generations:
+
 ```swift
-// Stop when fitness improvement stalls
-let adaptiveTermination: TerminationCheck<MyIndividual> = { generation, population in
-    if generation < 10 { return false }
-
-    let currentBest = population.map { $0.fitness() }.max()!
-    let previousBest = // ... get from history
-
-    return abs(currentBest - previousBest) < 0.001
+/// Stops when the best fitness hasn't improved for `patience` generations.
+func stallTermination(patience: Int) -> TerminationCheck<MyIndividual> {
+    var bestSoFar = -Double.infinity
+    var generationsWithoutImprovement = 0
+    return { generation, population in
+        // A new run, for example after `reset()`, starts again at generation 0.
+        if generation == 0 {
+            bestSoFar = -Double.infinity
+            generationsWithoutImprovement = 0
+        }
+        let currentBest = population.map { $0.fitness() }.max() ?? -Double.infinity
+        if currentBest > bestSoFar {
+            bestSoFar = currentBest
+            generationsWithoutImprovement = 0
+        } else {
+            generationsWithoutImprovement += 1
+        }
+        return generationsWithoutImprovement >= patience
+    }
 }
+
+solver.terminationCheck = stallTermination(patience: 10)
 ```
 
 ### Elitism Replacement
@@ -314,6 +331,15 @@ let rouletteSelection: SelectionOperator<MyIndividual> = { population in
 - `FitnessEvaluatable`: Protocol for types that can be evaluated for fitness
 - `GeneticSolver<Element>`: Main solver class with state tracking
 - `GeneticOperators`: Protocol defining core genetic algorithm operations
+
+### Solver State and Methods
+
+- `currentPopulation`: The current population
+- `currentGeneration`: The number of generations run since `init` or the last `reset()`
+- `isTerminated`: Whether the termination check passed for the current population
+- `step()`: Runs one generation and returns `isTerminated`; does nothing once terminated
+- `solve(maxGenerations:)`: Runs generations until terminated or `currentGeneration` reaches `maxGenerations`, and returns the population
+- `reset()`: Starts over with a new population at generation 0
 
 ### Operator Types
 
