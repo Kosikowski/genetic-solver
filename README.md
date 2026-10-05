@@ -502,6 +502,12 @@ Run the tests with `swift test`. CI also builds and tests on Linux with the olde
 ./scripts/test-linux.sh 5.9      # A specific version
 ```
 
+This package uses the Swift 5 language mode, which doesn't enforce `Sendable`. CI also builds and runs a small client in the Swift 6 language mode (`Tests/Swift6Client/main.swift`) to catch problems that only Swift 6 users would see. To run it locally (requires Swift 6.0 or later):
+
+```bash
+./scripts/test-swift6-client.sh
+```
+
 To run the tests for an Apple platform the way CI does, with the Xcode selected by `xcode-select`:
 
 ```bash

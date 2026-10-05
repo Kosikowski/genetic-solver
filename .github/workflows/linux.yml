@@ -58,3 +58,17 @@ jobs:
 
       - name: Test Release
         run: swift test -c release -v
+
+  # This package and its tests use the Swift 5 language mode, which doesn't
+  # enforce Sendable. A small client in the Swift 6 language mode catches
+  # problems that only Swift 6 users would see.
+  swift6-client:
+    runs-on: ubuntu-latest
+    name: Swift 6 Client
+    container: swift:6.1.2
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Build and run a Swift 6 client of this package
+        run: ./scripts/test-swift6-client.sh
