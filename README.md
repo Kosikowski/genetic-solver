@@ -210,8 +210,7 @@ var solver = GeneticSolver<MyIndividual>(
 
 // Run until the target is reached, or for at most 200 generations.
 let finalPopulation = solver.solve(maxGenerations: 200)
-let bestIndividual = finalPopulation.max { $0.fitness() < $1.fitness() }!
-print("Best fitness: \(bestIndividual.fitness())")
+print("Best fitness: \(solver.bestElement.fitness())")
 ```
 
 #### Using Protocol-Based Operators
@@ -229,8 +228,7 @@ var solver = GeneticSolver(
 
 // Runs until the termination check stops it at generation 100.
 let finalPopulation = solver.solve()
-let bestIndividual = finalPopulation.max { $0.fitness() < $1.fitness() }!
-print("Best fitness: \(bestIndividual.fitness())")
+print("Best fitness: \(solver.bestElement.fitness())")
 ```
 
 Each operator can still be replaced afterwards, for example `solver.mutationOperator = { ... }`.
@@ -246,7 +244,7 @@ var solver = GeneticSolver<MyIndividual>(/* ... */)
 
 // Run one generation at a time
 while !solver.step() {
-    print("Generation \(solver.currentGeneration): Best fitness = \(solver.currentPopulation.map { $0.fitness() }.max()!)")
+    print("Generation \(solver.currentGeneration): Best fitness = \(solver.bestElement.fitness())")
 }
 
 // Access current state
@@ -302,16 +300,23 @@ solver.terminationCheck = stallTermination(patience: 10)
 
 ### Elitism Replacement
 
+The default replacement replaces the whole population, so the best individual found so far can be lost in the next generation. Elitist replacement carries the fittest individuals of each generation into the next one, so the best fitness never gets worse and `solver.bestElement` is always the best individual found so far:
+
 ```swift
-let elitismReplacement: ReplacementOperator<MyIndividual> = { old, new in
-    let eliteCount = 2
-    let sortedOld = old.sorted { $0.fitness() > $1.fitness() }
-    let elite = Array(sortedOld.prefix(eliteCount))
-    let sortedNew = new.sorted { $0.fitness() > $1.fitness() }
-    let rest = Array(sortedNew.prefix(old.count - eliteCount))
-    return elite + rest
-}
+var solver = GeneticSolver<MyIndividual>(
+    populationSize: 50,
+    crossoverRate: 0.8,
+    mutationRate: 0.1,
+    selectionOperator: selection,
+    crossoverOperator: crossover,
+    mutationOperator: mutation,
+    replacementOperator: GeneticSolver.elitistReplacement(eliteCount: 2), // Keep the 2 fittest
+    terminationCheck: { _, population in population.contains { $0.fitness() >= 950 } },
+    newElement: { MyIndividual(genes: (0..<10).map { _ in Int.random(in: 0...100) }) }
+)
 ```
+
+The elite replace the last new individuals, so the population size doesn't change. Each individual of the current population has its fitness evaluated once per generation.
 
 ### Roulette Wheel Selection
 
@@ -357,6 +362,7 @@ let rouletteSelection: SelectionOperator<MyIndividual> = { population in
 
 - `currentPopulation`: The current population
 - `currentGeneration`: The number of generations run since `init` or the last `reset()`
+- `bestElement`: The fittest individual in the current population (with elitist replacement, the best found so far)
 - `isTerminated`: Whether the termination check passed for the current population
 - `step()`: Runs one generation and returns `isTerminated`; does nothing once terminated
 - `solve(maxGenerations:)`: Runs generations until terminated or `currentGeneration` reaches `maxGenerations`, and returns the population
@@ -381,7 +387,7 @@ The `GeneticOperators` protocol provides default implementations for all genetic
 - `selectionOperator`: Tournament selection with tournament size of 3
 - `crossoverOperator`: Returns parents unchanged (no crossover)
 - `mutationOperator`: Returns element unchanged (no mutation)
-- `replacementOperator`: Generational replacement (replace all)
+- `replacementOperator`: Generational replacement (replace all, so the best individual can be lost); `GeneticSolver.elitistReplacement(eliteCount:)` keeps the fittest
 - `fixedGenerationTermination`: Stop after fixed number of generations
 - `newElement`: Must be implemented by conforming types
 

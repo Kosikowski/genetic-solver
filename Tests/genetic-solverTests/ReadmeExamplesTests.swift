@@ -237,11 +237,11 @@ final class ReadmeExamplesTests: XCTestCase {
         XCTAssertEqual(populationsMeetingTermination, 0, "Starting populations should not already meet the termination check")
     }
 
-    func testQuickStartRunsGenerationsAndReachesTarget() throws {
+    func testQuickStartRunsGenerationsAndReachesTarget() {
         var solver = ReadmeQuickStart.makeSolver()
 
         let finalPopulation = solver.solve(maxGenerations: ReadmeQuickStart.maxGenerations)
-        let bestIndividual = try XCTUnwrap(finalPopulation.max { $0.fitness() < $1.fitness() })
+        let bestIndividual = solver.bestElement
 
         XCTAssertGreaterThan(solver.currentGeneration, 0, "The solver should run at least one generation")
         XCTAssertLessThanOrEqual(solver.currentGeneration, ReadmeQuickStart.maxGenerations)
@@ -407,7 +407,7 @@ final class ReadmeExamplesTests: XCTestCase {
         XCTAssertGreaterThan(differentPairs, 0)
     }
 
-    func testOptionBReachesHighFitnessWithin100Generations() throws {
+    func testOptionBReachesHighFitnessWithin100Generations() {
         var solver = GeneticSolver(
             populationSize: 50,
             crossoverRate: 0.8,
@@ -416,7 +416,8 @@ final class ReadmeExamplesTests: XCTestCase {
             terminationCheck: MyGeneticOperators.fixedGenerationTermination(maxGenerations: 100)
         )
 
-        let bestIndividual = try XCTUnwrap(solver.solve().max { $0.fitness() < $1.fitness() })
+        _ = solver.solve()
+        let bestIndividual = solver.bestElement
 
         // Across 2,000 runs the best fitness after 100 generations was never
         // below 952 (out of 1000).
@@ -511,5 +512,31 @@ final class ReadmeExamplesTests: XCTestCase {
 
         XCTAssertEqual(solver.currentGeneration, 20)
         XCTAssertEqual(solver.currentPopulation.count, 20)
+    }
+
+    // MARK: Elitism Replacement
+
+    func testElitismExampleKeepsTheBestAndReachesTheTarget() {
+        var solver = GeneticSolver<MyIndividual>(
+            populationSize: 50,
+            crossoverRate: 0.8,
+            mutationRate: 0.1,
+            selectionOperator: ReadmeQuickStart.selection,
+            crossoverOperator: ReadmeQuickStart.crossover,
+            mutationOperator: ReadmeQuickStart.mutation,
+            replacementOperator: GeneticSolver.elitistReplacement(eliteCount: 2), // Keep the 2 fittest
+            terminationCheck: { _, population in population.contains { $0.fitness() >= 950 } },
+            newElement: { MyIndividual(genes: (0 ..< 10).map { _ in Int.random(in: 0 ... 100) }) }
+        )
+
+        var bestFitnesses = [solver.bestElement.fitness()]
+        while solver.currentGeneration < 200, !solver.step() {
+            bestFitnesses.append(solver.bestElement.fitness())
+        }
+        bestFitnesses.append(solver.bestElement.fitness())
+
+        XCTAssertEqual(bestFitnesses, bestFitnesses.sorted(), "The best fitness must never go down")
+        XCTAssertGreaterThanOrEqual(solver.bestElement.fitness(), 950)
+        XCTAssertEqual(solver.currentPopulation.count, 50)
     }
 }

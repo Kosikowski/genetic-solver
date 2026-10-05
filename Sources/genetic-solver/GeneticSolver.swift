@@ -72,6 +72,23 @@ public struct GeneticSolver<Element: GeneticElement & FitnessEvaluatable> {
     /// replaced with one that returns `false`.
     public private(set) var isTerminated: Bool
 
+    // MARK: Computed Properties
+
+    /// The fittest individual in the current population; on a tie, the first
+    /// one. Each access evaluates `fitness()` once per individual.
+    ///
+    /// The default replacement operator replaces the whole population, so the
+    /// best individual found so far can be lost. With
+    /// `elitistReplacement(eliteCount:)` (and an `eliteCount` of at least 1),
+    /// this is always the best individual found so far.
+    public var bestElement: Element {
+        // The population is never empty: `populationSize` is at least 1 and
+        // `step()` stops if a replacement operator returns no individuals.
+        let fitnesses = currentPopulation.map { $0.fitness() }
+        let bestIndex = fitnesses.indices.max { fitnesses[$0] < fitnesses[$1] }!
+        return currentPopulation[bestIndex]
+    }
+
     // MARK: Lifecycle
 
     /// Initialize the genetic solver with the specified parameters and operators.
