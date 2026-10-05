@@ -304,8 +304,12 @@ final class ReadmeExamplesTests: XCTestCase {
     }
 
     func testExpensiveIndividualWorksWithTheSolver() {
+        // A crossover rate of 1 applies crossover to every pair, so every
+        // child combines two individuals and the result doesn't depend on
+        // random numbers.
         var solver = GeneticSolver<ExpensiveIndividual>(
             populationSize: 4,
+            crossoverRate: 1,
             selectionOperator: { ($0[0], $0[1]) },
             crossoverOperator: { [ExpensiveIndividual(genes: $0.genes + $1.genes)] },
             mutationOperator: { $0 },
