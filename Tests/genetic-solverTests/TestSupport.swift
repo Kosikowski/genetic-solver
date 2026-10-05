@@ -111,3 +111,13 @@ struct ScoredIndividual: GeneticElement {
         return score
     }
 }
+
+// MARK: - ScoredDefaultOperators
+
+/// Implements only `newElement()`, so every other operator is the
+/// protocol's default implementation.
+enum ScoredDefaultOperators: GeneticOperators {
+    static func newElement() -> ScoredIndividual {
+        ScoredIndividual(id: 0, score: 0)
+    }
+}

@@ -6,31 +6,6 @@
 import XCTest
 @testable import genetic_solver
 
-// MARK: - CallCounter
-
-/// Counts `fitness()` calls across the individuals that share it.
-private final class CallCounter {
-    var calls = 0
-}
-
-// MARK: - Scored
-
-/// An individual with a given fitness that counts its `fitness()` calls.
-private struct Scored: GeneticElement, FitnessEvaluatable {
-    // MARK: Properties
-
-    let id: Int
-    let score: Int
-    let counter: CallCounter
-
-    // MARK: Functions
-
-    func fitness() -> Int {
-        counter.calls += 1
-        return score
-    }
-}
-
 // MARK: - ElitismTests
 
 final class ElitismTests: XCTestCase {
@@ -46,7 +21,7 @@ final class ElitismTests: XCTestCase {
     }
 
     func testZeroEliteCountReturnsTheNewIndividualsWithoutEvaluatingFitness() {
-        let counter = CallCounter()
+        let counter = FitnessCallCounter()
         let old = individuals(scores: [5, 1], counter: counter)
         let new = individuals(scores: [0, 0], firstID: 10, counter: counter)
 
@@ -84,8 +59,8 @@ final class ElitismTests: XCTestCase {
     }
 
     func testEvaluatesEachCurrentIndividualOnceAndNoNewOnes() {
-        let oldCounter = CallCounter()
-        let newCounter = CallCounter()
+        let oldCounter = FitnessCallCounter()
+        let newCounter = FitnessCallCounter()
         let old = individuals(scores: [3, 1, 2, 5, 4], counter: oldCounter)
         let new = individuals(scores: [0, 0, 0, 0, 0], firstID: 10, counter: newCounter)
 
@@ -137,13 +112,13 @@ final class ElitismTests: XCTestCase {
     }
 
     func testBestFitnessNeverDecreasesWithElitism() {
-        let counter = CallCounter()
+        let counter = FitnessCallCounter()
         var nextID = 0
-        func random() -> Scored {
+        func random() -> ScoredIndividual {
             defer { nextID += 1 }
-            return Scored(id: nextID, score: Int.random(in: 0 ... 1000), counter: counter)
+            return ScoredIndividual(id: nextID, score: Int.random(in: 0 ... 1000), counter: counter)
         }
-        var solver = GeneticSolver<Scored>(
+        var solver = GeneticSolver<ScoredIndividual>(
             populationSize: 10,
             crossoverRate: 0.5,
             mutationRate: 1,
@@ -185,7 +160,7 @@ final class ElitismTests: XCTestCase {
     }
 
     func testBestElementEvaluatesEachIndividualOnce() {
-        let counter = CallCounter()
+        let counter = FitnessCallCounter()
         let solver = makeSolver(scores: [3, 8, 1, 5], counter: counter)
         counter.calls = 0
 
@@ -196,18 +171,18 @@ final class ElitismTests: XCTestCase {
 
     // MARK: Helpers
 
-    private func elitist(_ eliteCount: Int) -> ReplacementOperator<Scored> {
-        GeneticSolver<Scored>.elitistReplacement(eliteCount: eliteCount)
+    private func elitist(_ eliteCount: Int) -> ReplacementOperator<ScoredIndividual> {
+        GeneticSolver<ScoredIndividual>.elitistReplacement(eliteCount: eliteCount)
     }
 
-    private func individuals(scores: [Int], firstID: Int = 0, counter: CallCounter = CallCounter()) -> [Scored] {
-        scores.enumerated().map { Scored(id: firstID + $0.offset, score: $0.element, counter: counter) }
+    private func individuals(scores: [Int], firstID: Int = 0, counter: FitnessCallCounter = FitnessCallCounter()) -> [ScoredIndividual] {
+        scores.enumerated().map { ScoredIndividual(id: firstID + $0.offset, score: $0.element, counter: counter) }
     }
 
     /// A solver whose starting population has the given scores, in order.
-    private func makeSolver(scores: [Int], counter: CallCounter = CallCounter()) -> GeneticSolver<Scored> {
+    private func makeSolver(scores: [Int], counter: FitnessCallCounter = FitnessCallCounter()) -> GeneticSolver<ScoredIndividual> {
         var remaining = individuals(scores: scores, counter: counter)[...]
-        return GeneticSolver<Scored>(
+        return GeneticSolver<ScoredIndividual>(
             populationSize: scores.count,
             selectionOperator: { ($0[0], $0[0]) },
             crossoverOperator: { [$0, $1] },
@@ -220,10 +195,10 @@ final class ElitismTests: XCTestCase {
 
     /// A solver whose starting scores are [2, 9, 4, 1] and whose mutation,
     /// applied to every child, produces score 0.
-    private func makeWorseningSolver() -> GeneticSolver<Scored> {
+    private func makeWorseningSolver() -> GeneticSolver<ScoredIndividual> {
         var solver = makeSolver(scores: [2, 9, 4, 1])
         solver.mutationRate = 1
-        solver.mutationOperator = { Scored(id: 100 + $0.id, score: 0, counter: $0.counter) }
+        solver.mutationOperator = { ScoredIndividual(id: 100 + $0.id, score: 0, counter: $0.counter) }
         return solver
     }
 }

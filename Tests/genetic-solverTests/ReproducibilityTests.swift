@@ -248,7 +248,7 @@ final class ReproducibilityTests: XCTestCase {
         let select: SelectionOperator<ScoredIndividual> = if let tournamentSize {
             GeneticSolver.tournamentSelection(tournamentSize: tournamentSize, using: SeededRandomNumberGenerator(seed: 99))
         } else {
-            { DefaultSelection.selectionOperator(population: $0) }
+            { ScoredDefaultOperators.selectionOperator(population: $0) }
         }
         var weakPicks = 0
         for _ in 0 ..< 5000 {
@@ -256,14 +256,5 @@ final class ReproducibilityTests: XCTestCase {
             weakPicks += [first, second].filter { $0.id == weak.id }.count
         }
         return Double(weakPicks) / 10000
-    }
-}
-
-// MARK: - DefaultSelection
-
-/// Uses every default `GeneticOperators` operator.
-private enum DefaultSelection: GeneticOperators {
-    static func newElement() -> ScoredIndividual {
-        ScoredIndividual(id: 0, score: 0)
     }
 }
