@@ -11,6 +11,41 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+usage() {
+    echo "Usage: $0 [--check]"
+    echo "  (no option)  Format all Swift files in Sources/ and Tests/"
+    echo "  --check      Only check formatting; exit with 1 if any file needs formatting"
+}
+
+# Determine if we're just checking or actually formatting. Unknown arguments
+# are rejected so that a typo never formats files when a check was intended.
+CHECK_ONLY=false
+if [ $# -gt 1 ]; then
+    echo -e "${RED}❌ Too many arguments${NC}" >&2
+    usage >&2
+    exit 2
+fi
+if [ $# -eq 1 ]; then
+    case "$1" in
+        --check)
+            CHECK_ONLY=true
+            ;;
+        -h | --help)
+            usage
+            exit 0
+            ;;
+        *)
+            echo -e "${RED}❌ Unknown argument: $1${NC}" >&2
+            usage >&2
+            exit 2
+            ;;
+    esac
+fi
+
+# Run from the repository root so the paths below resolve no matter where
+# the script is called from.
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
 # Check if SwiftFormat is installed
 if ! command -v swiftformat &> /dev/null; then
     echo -e "${RED}❌ SwiftFormat is not installed${NC}"
@@ -22,12 +57,6 @@ fi
 if [ ! -f ".swiftformat" ]; then
     echo -e "${RED}❌ .swiftformat configuration file not found${NC}"
     exit 1
-fi
-
-# Determine if we're just checking or actually formatting
-CHECK_ONLY=false
-if [[ "$1" == "--check" ]]; then
-    CHECK_ONLY=true
 fi
 
 echo -e "${YELLOW}🔍 Checking code formatting...${NC}"
