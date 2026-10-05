@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Builds and tests the package for one Apple platform with the selected Xcode.
-# Usage: ./scripts/test-apple.sh macOS|iOS|tvOS|visionOS
+# Usage: ./scripts/test-apple.sh macOS|iOS|tvOS|watchOS|visionOS
 #
 # macOS runs `swift test`. The other platforms run `xcodebuild test` on a
 # simulator. The simulator is chosen from the destinations Xcode reports for
@@ -13,7 +13,7 @@ set -euo pipefail
 SCHEME="genetic-solver"
 
 usage() {
-    echo "Usage: $0 macOS|iOS|tvOS|visionOS"
+    echo "Usage: $0 macOS|iOS|tvOS|watchOS|visionOS"
 }
 
 if [ $# -ne 1 ]; then
@@ -23,7 +23,7 @@ fi
 platform="$1"
 
 case "$platform" in
-    macOS | iOS | tvOS | visionOS) ;;
+    macOS | iOS | tvOS | watchOS | visionOS) ;;
     -h | --help)
         usage
         exit 0

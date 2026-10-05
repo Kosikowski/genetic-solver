@@ -36,9 +36,9 @@ This cycle repeats until the termination condition is satisfied, gradually impro
 ## Requirements
 
 - Swift 5.9 or later
-- macOS 13, iOS 17, tvOS 17, visionOS 1 or later, Linux, or Windows
+- macOS, iOS, tvOS, watchOS, visionOS, Linux, or Windows
 
-On Apple platforms, a package that depends on this library must declare at least the same minimum versions, for example `platforms: [.macOS(.v13), .iOS(.v17)]`. Without that, the build fails with "requires minimum platform version 13.0 for the macOS platform".
+The library uses only the Swift standard library, so it sets no minimum OS versions of its own: it supports every deployment target your Swift toolchain supports, and your package doesn't need to declare `platforms` to use it.
 
 ## Installation
 
@@ -509,7 +509,7 @@ To run the tests for an Apple platform the way CI does, with the Xcode selected 
 
 ```bash
 ./scripts/test-apple.sh macOS    # swift test
-./scripts/test-apple.sh iOS      # xcodebuild test on the newest iOS simulator (also tvOS, visionOS)
+./scripts/test-apple.sh iOS      # xcodebuild test on the newest iOS simulator (also tvOS, watchOS, visionOS)
 ```
 
 ### Releasing
