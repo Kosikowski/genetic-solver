@@ -2,7 +2,8 @@
 //  genetic-solverTests
 //
 //  Tests that conforming to GeneticElement alone is enough to use a type
-//  with the solver, and that listing both protocols still works.
+//  with the solver, that listing both protocols still works, and that
+//  GeneticElement can be used as a type with `any`.
 
 import XCTest
 @testable import genetic_solver
@@ -33,6 +34,11 @@ private enum MinimalOperators: GeneticOperators {
 /// Only accepts types that are `FitnessEvaluatable`.
 private func fitness<Individual: FitnessEvaluatable>(of individual: Individual) -> Individual.Fitness {
     individual.fitness()
+}
+
+/// Describes the fitness of any `GeneticElement`, whatever its `Fitness` type.
+private func describeFitness(of element: some GeneticElement) -> String {
+    "\(element.fitness())"
 }
 
 /// Only accepts types that are `GeneticElement`.
@@ -73,6 +79,17 @@ final class GeneticElementTests: XCTestCase {
         XCTAssertTrue(solver.isTerminated)
         XCTAssertEqual(solver.currentPopulation.count, 4)
         XCTAssertGreaterThanOrEqual(solver.bestElement.value, 3, "Elitism keeps the best starting value")
+    }
+
+    /// `GeneticElement` includes the `Fitness` associated type, so code that
+    /// used it as a type in 0.1.0 (`[GeneticElement]`, `is GeneticElement`)
+    /// needs `any`, as the CHANGELOG's upgrade notes say. This is that code.
+    func testGeneticElementCanBeUsedAsATypeWithAny() {
+        let elements: [any GeneticElement] = [Minimal(value: 3), TestIndividual(gene: .one, id: 0)]
+        let values: [Any] = [Minimal(value: 2), TestIndividual(gene: .zero, id: 1), 5, "text"]
+
+        XCTAssertEqual(elements.map { describeFitness(of: $0) }, ["3", "1.0"], "Existentials open for generic code")
+        XCTAssertEqual(values.map { $0 is any GeneticElement }, [true, true, false, false])
     }
 
     func testOperatorsTypeWhoseElementConformsOnlyToGeneticElement() {

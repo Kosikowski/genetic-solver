@@ -12,6 +12,9 @@
 /// Conforming to `GeneticElement` is enough to use a type with
 /// `GeneticSolver`, because it includes `FitnessEvaluatable`. Listing both
 /// protocols, as older code does, works too.
+///
+/// Because it includes `FitnessEvaluatable`'s `Fitness` associated type,
+/// using it as a type needs `any`, for example `[any GeneticElement]`.
 public protocol GeneticElement: FitnessEvaluatable {}
 
 /// Selection operator: picks two parents from the population (for example by
