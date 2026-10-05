@@ -150,16 +150,15 @@ let mutation: MutationOperator<MyIndividual> = { individual in
 
 #### Option B: Protocol-Based Approach
 
+Implement the operators your problem needs and `newElement()`. Anything you leave out uses the protocol's default implementation (see [Default Operators](#default-operators)):
+
 ```swift
 struct MyGeneticOperators: GeneticOperators {
     typealias Element = MyIndividual
 
-    static func selectionOperator(population: [Element]) -> (Element, Element) {
-        // Use default tournament selection
-        let candidates = (0..<3).map { _ in population.randomElement()! }
-        let best = candidates.max { $0.fitness() < $1.fitness() }!
-        return (best, best)
-    }
+    // selectionOperator, replacementOperator and fixedGenerationTermination
+    // use the default implementations: tournament selection, generational
+    // replacement, and stopping after a fixed number of generations.
 
     static func crossoverOperator(parent1: Element, parent2: Element) -> [Element] {
         let point = Int.random(in: 0..<parent1.genes.count)
@@ -177,14 +176,6 @@ struct MyGeneticOperators: GeneticOperators {
         let geneIndex = Int.random(in: 0..<mutant.genes.count)
         mutant.genes[geneIndex] = Int.random(in: 0...100)
         return mutant
-    }
-
-    static func replacementOperator(old: [Element], new: [Element]) -> [Element] {
-        return new // Generational replacement
-    }
-
-    static func fixedGenerationTermination(maxGenerations: Int) -> TerminationCheck<Element> {
-        return { generation, _ in generation >= maxGenerations }
     }
 
     static func newElement() -> Element {

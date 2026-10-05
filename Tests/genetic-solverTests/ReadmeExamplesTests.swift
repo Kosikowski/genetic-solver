@@ -122,12 +122,9 @@ private struct MyGeneticOperators: GeneticOperators {
 
     // MARK: Static Functions
 
-    static func selectionOperator(population: [Element]) -> (Element, Element) {
-        // Use default tournament selection
-        let candidates = (0 ..< 3).map { _ in population.randomElement()! }
-        let best = candidates.max { $0.fitness() < $1.fitness() }!
-        return (best, best)
-    }
+    // selectionOperator, replacementOperator and fixedGenerationTermination
+    // use the default implementations: tournament selection, generational
+    // replacement, and stopping after a fixed number of generations.
 
     static func crossoverOperator(parent1: Element, parent2: Element) -> [Element] {
         let point = Int.random(in: 0 ..< parent1.genes.count)
@@ -145,14 +142,6 @@ private struct MyGeneticOperators: GeneticOperators {
         let geneIndex = Int.random(in: 0 ..< mutant.genes.count)
         mutant.genes[geneIndex] = Int.random(in: 0 ... 100)
         return mutant
-    }
-
-    static func replacementOperator(old: [Element], new: [Element]) -> [Element] {
-        new // Generational replacement
-    }
-
-    static func fixedGenerationTermination(maxGenerations: Int) -> TerminationCheck<Element> {
-        { generation, _ in generation >= maxGenerations }
     }
 
     static func newElement() -> Element {
@@ -372,6 +361,37 @@ final class ReadmeExamplesTests: XCTestCase {
     }
 
     // MARK: Quick Start, Option B
+
+    /// Option B used to return the best candidate as both parents, so
+    /// crossover could only produce copies. It now uses the default
+    /// tournament selection, which picks each parent separately.
+    func testOptionBUsesTheDefaultSelectionWithIndependentParents() {
+        // Two different individuals with the same fitness.
+        let population = [MyIndividual(genes: [0, 5]), MyIndividual(genes: [5, 0])]
+
+        let differentPairs = (0 ..< 1000).filter { _ in
+            let (first, second) = MyGeneticOperators.selectionOperator(population: population)
+            return first.genes != second.genes
+        }.count
+
+        XCTAssertGreaterThan(differentPairs, 0)
+    }
+
+    func testOptionBReachesHighFitnessWithin100Generations() throws {
+        var solver = GeneticSolver(
+            populationSize: 50,
+            crossoverRate: 0.8,
+            mutationRate: 0.1,
+            operators: MyGeneticOperators.self,
+            terminationCheck: MyGeneticOperators.fixedGenerationTermination(maxGenerations: 100)
+        )
+
+        let bestIndividual = try XCTUnwrap(solver.solve().max { $0.fitness() < $1.fitness() })
+
+        // Across 2,000 runs the best fitness after 100 generations was never
+        // below 952 (out of 1000).
+        XCTAssertGreaterThanOrEqual(bestIndividual.fitness(), 940)
+    }
 
     func testOptionBSolverRunsUntilFixedGenerationTermination() {
         var solver = GeneticSolver(
