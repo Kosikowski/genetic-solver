@@ -529,6 +529,8 @@ This project uses SwiftFormat to maintain consistent code style. Different Swift
    ./scripts/format.sh --check
    ```
 
+Both run SwiftFormat on one file at a time, through `./scripts/swiftformat-each.sh`, as CI does. SwiftFormat stops any rule that runs longer than a time limit, and when it processes all files at once on a slower machine, such as a CI runner, rules hit that limit although nothing is wrong with the files.
+
 #### Pre-commit Hooks
 
 Install pre-commit hooks to automatically format code before commits:

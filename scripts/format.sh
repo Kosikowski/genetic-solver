@@ -71,11 +71,11 @@ fi
 echo -e "${YELLOW}🔍 Checking code formatting...${NC}"
 
 if [ "$CHECK_ONLY" = true ]; then
-    # Just check formatting. SwiftFormat exits with 0 when everything is
-    # formatted, 1 when some files need formatting, and another non-zero
-    # code when it could not run (for example a missing input path).
+    # Just check formatting, one file at a time (see swiftformat-each.sh).
+    # It exits with 0 when everything is formatted, 1 when some files need
+    # formatting, and another non-zero code when SwiftFormat failed.
     status=0
-    swiftformat --lint --config .swiftformat Sources/ Tests/ || status=$?
+    ./scripts/swiftformat-each.sh --lint || status=$?
     case $status in
         0)
             echo -e "${GREEN}✅ Code formatting is correct${NC}"
@@ -91,8 +91,8 @@ if [ "$CHECK_ONLY" = true ]; then
             ;;
     esac
 else
-    # Format the code
+    # Format the code, one file at a time (see swiftformat-each.sh)
     echo -e "${YELLOW}🎨 Formatting code...${NC}"
-    swiftformat --config .swiftformat Sources/ Tests/
+    ./scripts/swiftformat-each.sh
     echo -e "${GREEN}✅ Code formatting completed${NC}"
 fi

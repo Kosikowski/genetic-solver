@@ -29,11 +29,13 @@ jobs:
 
       - name: Check current formatting
         id: check-formatting
-        # SwiftFormat exits with 0 when everything is formatted, 1 when some
-        # files need formatting, and another non-zero code when it could not run.
+        # The script runs SwiftFormat one file at a time (with all files at
+        # once, it hits its time limit on these runners). It exits with 0 when
+        # everything is formatted, 1 when some files need formatting, and
+        # another non-zero code when SwiftFormat failed.
         run: |
           status=0
-          swiftformat --lint --config .swiftformat Sources/ Tests/ || status=$?
+          ./scripts/swiftformat-each.sh --lint || status=$?
           case $status in
             0) echo "needs-formatting=false" >> "$GITHUB_OUTPUT" ;;
             1) echo "needs-formatting=true" >> "$GITHUB_OUTPUT" ;;
@@ -42,8 +44,7 @@ jobs:
 
       - name: Format code
         if: steps.check-formatting.outputs.needs-formatting == 'true'
-        run: |
-          swiftformat --config .swiftformat Sources/ Tests/
+        run: ./scripts/swiftformat-each.sh
 
       # Pull requests opened with the default GITHUB_TOKEN don't start other
       # workflows, so CI wouldn't check them. When the repository has an
