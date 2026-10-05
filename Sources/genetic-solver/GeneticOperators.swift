@@ -15,7 +15,7 @@
 /// so a conforming type can be passed to
 /// `GeneticSolver(populationSize:crossoverRate:mutationRate:operators:terminationCheck:)`.
 public protocol GeneticOperators {
-    associatedtype Element: GeneticElement & FitnessEvaluatable
+    associatedtype Element: GeneticElement
 
     /// Selects two individuals from the population for reproduction.
     /// - Parameter population: The current population array.

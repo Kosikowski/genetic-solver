@@ -5,7 +5,7 @@
 //
 
 /// Genetic Solver: highly generic, extensible genetic algorithm framework
-public struct GeneticSolver<Element: GeneticElement & FitnessEvaluatable> {
+public struct GeneticSolver<Element: GeneticElement> {
     // MARK: Properties
 
     // Parameters, checked by `init`, `reset()` and `step()`, which stop the

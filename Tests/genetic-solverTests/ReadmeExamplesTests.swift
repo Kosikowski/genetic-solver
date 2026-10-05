@@ -10,7 +10,7 @@ import XCTest
 // MARK: - MyIndividual
 
 /// The individual from the README's Quick Start.
-private struct MyIndividual: GeneticElement, FitnessEvaluatable {
+private struct MyIndividual: GeneticElement {
     // MARK: Properties
 
     var genes: [Int]
@@ -25,7 +25,7 @@ private struct MyIndividual: GeneticElement, FitnessEvaluatable {
 // MARK: - ExpensiveIndividual
 
 /// The individual from the README's tip on expensive fitness.
-private struct ExpensiveIndividual: GeneticElement, FitnessEvaluatable {
+private struct ExpensiveIndividual: GeneticElement {
     // MARK: Properties
 
     let genes: [Int]

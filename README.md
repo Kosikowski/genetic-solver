@@ -24,7 +24,7 @@ This cycle repeats until the termination condition is satisfied, gradually impro
 
 ## Features
 
-- **Generic Design**: Works with any type that conforms to `GeneticElement` and `FitnessEvaluatable`
+- **Generic Design**: Works with any type that conforms to `GeneticElement`
 - **Customizable Operators**: Full control over selection, crossover, mutation, and replacement strategies
 - **Protocol-Based Design**: Uses `GeneticOperators` protocol for clean separation of concerns
 - **Default Implementations**: Built-in operators for common genetic algorithm patterns
@@ -75,12 +75,12 @@ import genetic_solver
 
 ### 1. Define Your Individual
 
-First, create a type that represents an individual in your genetic algorithm:
+First, create a type that represents an individual in your genetic algorithm. `GeneticElement` includes `FitnessEvaluatable`, so all it needs is a `fitness()` method that returns a `Comparable` value, where higher is better:
 
 ```swift
 import genetic_solver
 
-struct MyIndividual: GeneticElement, FitnessEvaluatable {
+struct MyIndividual: GeneticElement {
     var genes: [Int]
 
     func fitness() -> Double {
@@ -93,7 +93,7 @@ struct MyIndividual: GeneticElement, FitnessEvaluatable {
 `fitness()` can be called many times for the same individual, for example once per candidate in tournament selection. If it's expensive, compute it once when the individual is created and return the stored value. Keep the genes immutable (`let`) so the stored value can't go out of date, and have your operators create new individuals instead of changing copies:
 
 ```swift
-struct ExpensiveIndividual: GeneticElement, FitnessEvaluatable {
+struct ExpensiveIndividual: GeneticElement {
     let genes: [Int]
     private let storedFitness: Double
 
@@ -353,7 +353,7 @@ let rouletteSelection: SelectionOperator<MyIndividual> = { population in
 
 ### Core Types
 
-- `GeneticElement`: Protocol for types that can participate in genetic algorithms
+- `GeneticElement`: Protocol for the individuals of a genetic algorithm; it includes `FitnessEvaluatable`
 - `FitnessEvaluatable`: Protocol for types that can be evaluated for fitness
 - `GeneticSolver<Element>`: Main solver class with state tracking
 - `GeneticOperators`: Protocol defining core genetic algorithm operations; pass a conforming type to `GeneticSolver(populationSize:crossoverRate:mutationRate:operators:terminationCheck:)`
@@ -400,7 +400,7 @@ struct City {
     let x: Double, y: Double
 }
 
-struct TSPIndividual: GeneticElement, FitnessEvaluatable {
+struct TSPIndividual: GeneticElement {
     var route: [Int]
     let cities: [City]
 
@@ -425,7 +425,7 @@ struct Item {
     let value: Int
 }
 
-struct KnapsackIndividual: GeneticElement, FitnessEvaluatable {
+struct KnapsackIndividual: GeneticElement {
     var selection: [Bool]
     let items: [Item]
     let maxWeight: Int

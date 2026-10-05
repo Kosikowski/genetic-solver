@@ -6,10 +6,16 @@
 
 // MARK: - GeneticElement
 
-/// Protocol that represents an individual in the genetic algorithm.
-public protocol GeneticElement {} // a marker porotocol for the Solver
+/// An individual in the genetic algorithm: a candidate solution that the
+/// solver can evaluate with `fitness()`.
+///
+/// Conforming to `GeneticElement` is enough to use a type with
+/// `GeneticSolver`, because it includes `FitnessEvaluatable`. Listing both
+/// protocols, as older code does, works too.
+public protocol GeneticElement: FitnessEvaluatable {}
 
-/// Default selection operator using Comparable fitness (tournament, roulette, etc. can be user-provided)
+/// Selection operator: picks two parents from the population (for example by
+/// tournament or roulette wheel selection)
 public typealias SelectionOperator<Element> = ([Element]) -> (Element, Element)
 
 /// Crossover operator: produces children from two parents. It may return any
