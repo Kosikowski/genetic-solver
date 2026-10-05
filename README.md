@@ -315,21 +315,29 @@ let elitismReplacement: ReplacementOperator<MyIndividual> = { old, new in
 
 ### Roulette Wheel Selection
 
+Each individual's chance of being picked is proportional to its fitness, so fitness must be finite and not negative. Individuals with fitness 0 are never picked, unless every individual has fitness 0 (as in a knapsack population where every selection is overweight); then parents are picked at random:
+
 ```swift
 let rouletteSelection: SelectionOperator<MyIndividual> = { population in
-    let totalFitness = population.reduce(0) { $0 + $1.fitness() }
+    let fitnesses = population.map { $0.fitness() } // Evaluate each individual once
+    precondition(fitnesses.allSatisfy { $0 >= 0 && $0.isFinite }, "Roulette wheel selection needs finite, non-negative fitness")
+    let totalFitness = fitnesses.reduce(0, +)
 
     func selectOne() -> MyIndividual {
+        // With no positive fitness there is no wheel to spin.
+        guard totalFitness > 0 else { return population.randomElement()! }
+
         let target = Double.random(in: 0..<totalFitness)
         var cumulative = 0.0
-
-        for individual in population {
-            cumulative += individual.fitness()
-            if cumulative >= target {
+        for (individual, fitness) in zip(population, fitnesses) {
+            cumulative += fitness
+            if cumulative > target {
                 return individual
             }
         }
-        return population.last!
+        // Not reached: the loop adds the same values in the same order as
+        // totalFitness, so the final sum equals totalFitness > target.
+        return population[population.count - 1]
     }
 
     return (selectOne(), selectOne())

@@ -149,6 +149,36 @@ private struct MyGeneticOperators: GeneticOperators {
     }
 }
 
+// MARK: - ReadmeRoulette
+
+/// The selection operator from the README's Roulette Wheel Selection section.
+private enum ReadmeRoulette {
+    static let rouletteSelection: SelectionOperator<MyIndividual> = { population in
+        let fitnesses = population.map { $0.fitness() } // Evaluate each individual once
+        precondition(fitnesses.allSatisfy { $0 >= 0 && $0.isFinite }, "Roulette wheel selection needs finite, non-negative fitness")
+        let totalFitness = fitnesses.reduce(0, +)
+
+        func selectOne() -> MyIndividual {
+            // With no positive fitness there is no wheel to spin.
+            guard totalFitness > 0 else { return population.randomElement()! }
+
+            let target = Double.random(in: 0 ..< totalFitness)
+            var cumulative = 0.0
+            for (individual, fitness) in zip(population, fitnesses) {
+                cumulative += fitness
+                if cumulative > target {
+                    return individual
+                }
+            }
+            // Not reached: the loop adds the same values in the same order as
+            // totalFitness, so the final sum equals totalFitness > target.
+            return population[population.count - 1]
+        }
+
+        return (selectOne(), selectOne())
+    }
+}
+
 // MARK: - Custom Termination Conditions
 
 /// `stallTermination(patience:)` from the README's Custom Termination
@@ -408,5 +438,78 @@ final class ReadmeExamplesTests: XCTestCase {
         XCTAssertTrue(solver.isTerminated)
         XCTAssertEqual(finalPopulation.count, 50)
         XCTAssertTrue(finalPopulation.allSatisfy { $0.genes.count == 10 && $0.genes.allSatisfy { (0 ... 100).contains($0) } })
+    }
+
+    // MARK: Roulette Wheel Selection
+
+    /// The README version crashed here: with a total fitness of 0,
+    /// `Double.random(in: 0 ..< 0)` traps.
+    func testRouletteWithAllZeroFitnessPicksAtRandom() {
+        let population = [MyIndividual(genes: [0]), MyIndividual(genes: [0, 0]), MyIndividual(genes: [0, 0, 0])]
+
+        var pickedGeneCounts = Set<Int>()
+        for _ in 0 ..< 1000 {
+            let (first, second) = ReadmeRoulette.rouletteSelection(population)
+            pickedGeneCounts.insert(first.genes.count)
+            pickedGeneCounts.insert(second.genes.count)
+        }
+
+        XCTAssertEqual(pickedGeneCounts, [1, 2, 3], "Every individual should be picked at some point")
+    }
+
+    func testRouletteNeverPicksZeroFitnessWhenAnotherIndividualIsPositive() {
+        let population = [MyIndividual(genes: [0]), MyIndividual(genes: [5]), MyIndividual(genes: [0, 0])]
+
+        for _ in 0 ..< 1000 {
+            let (first, second) = ReadmeRoulette.rouletteSelection(population)
+            XCTAssertEqual(first.genes, [5])
+            XCTAssertEqual(second.genes, [5])
+        }
+    }
+
+    func testRoulettePicksInProportionToFitness() {
+        let population = [MyIndividual(genes: [1]), MyIndividual(genes: [3])]
+        let picks = 10000
+
+        var strongPicks = 0
+        for _ in 0 ..< picks / 2 {
+            let (first, second) = ReadmeRoulette.rouletteSelection(population)
+            strongPicks += [first, second].filter { $0.genes == [3] }.count
+        }
+
+        // Expected share 0.75 with a standard deviation of about 0.0043, so
+        // this range is about 7 standard deviations wide on each side.
+        let strongShare = Double(strongPicks) / Double(picks)
+        XCTAssertGreaterThan(strongShare, 0.72)
+        XCTAssertLessThan(strongShare, 0.78)
+    }
+
+    func testRouletteWithSingleIndividualReturnsItTwice() {
+        let (first, second) = ReadmeRoulette.rouletteSelection([MyIndividual(genes: [4])])
+
+        XCTAssertEqual(first.genes, [4])
+        XCTAssertEqual(second.genes, [4])
+    }
+
+    /// The case from the review: a population where every individual has
+    /// fitness 0, like a knapsack population where every selection is
+    /// overweight, must not crash the solver.
+    func testRouletteRunsInTheSolverWithAZeroFitnessStartingPopulation() {
+        var solver = GeneticSolver<MyIndividual>(
+            populationSize: 20,
+            crossoverRate: 0.8,
+            mutationRate: 0.5,
+            selectionOperator: ReadmeRoulette.rouletteSelection,
+            crossoverOperator: ReadmeQuickStart.crossover,
+            mutationOperator: ReadmeQuickStart.mutation,
+            replacementOperator: { _, new in new },
+            terminationCheck: { _, _ in false },
+            newElement: { MyIndividual(genes: Array(repeating: 0, count: 10)) }
+        )
+
+        _ = solver.solve(maxGenerations: 20)
+
+        XCTAssertEqual(solver.currentGeneration, 20)
+        XCTAssertEqual(solver.currentPopulation.count, 20)
     }
 }
