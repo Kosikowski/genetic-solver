@@ -112,6 +112,54 @@ private enum ReadmeQuickStart {
     }
 }
 
+// MARK: - MyGeneticOperators
+
+/// The operators type from the README's Quick Start, Option B.
+private struct MyGeneticOperators: GeneticOperators {
+    // MARK: Nested Types
+
+    typealias Element = MyIndividual
+
+    // MARK: Static Functions
+
+    static func selectionOperator(population: [Element]) -> (Element, Element) {
+        // Use default tournament selection
+        let candidates = (0 ..< 3).map { _ in population.randomElement()! }
+        let best = candidates.max { $0.fitness() < $1.fitness() }!
+        return (best, best)
+    }
+
+    static func crossoverOperator(parent1: Element, parent2: Element) -> [Element] {
+        let point = Int.random(in: 0 ..< parent1.genes.count)
+        let child1 = MyIndividual(
+            genes: Array(parent1.genes[..<point]) + Array(parent2.genes[point...])
+        )
+        let child2 = MyIndividual(
+            genes: Array(parent2.genes[..<point]) + Array(parent1.genes[point...])
+        )
+        return [child1, child2]
+    }
+
+    static func mutationOperator(element: Element) -> Element {
+        var mutant = element
+        let geneIndex = Int.random(in: 0 ..< mutant.genes.count)
+        mutant.genes[geneIndex] = Int.random(in: 0 ... 100)
+        return mutant
+    }
+
+    static func replacementOperator(old: [Element], new: [Element]) -> [Element] {
+        new // Generational replacement
+    }
+
+    static func fixedGenerationTermination(maxGenerations: Int) -> TerminationCheck<Element> {
+        { generation, _ in generation >= maxGenerations }
+    }
+
+    static func newElement() -> Element {
+        MyIndividual(genes: (0 ..< 10).map { _ in Int.random(in: 0 ... 100) })
+    }
+}
+
 // MARK: - Custom Termination Conditions
 
 /// `stallTermination(patience:)` from the README's Custom Termination
@@ -321,5 +369,24 @@ final class ReadmeExamplesTests: XCTestCase {
         _ = solver.solve(maxGenerations: 1)
 
         XCTAssertEqual(solver.currentPopulation.map { $0.fitness() }, [2, 2, 2, 2])
+    }
+
+    // MARK: Quick Start, Option B
+
+    func testOptionBSolverRunsUntilFixedGenerationTermination() {
+        var solver = GeneticSolver(
+            populationSize: 50,
+            crossoverRate: 0.8,
+            mutationRate: 0.1,
+            operators: MyGeneticOperators.self,
+            terminationCheck: MyGeneticOperators.fixedGenerationTermination(maxGenerations: 100)
+        )
+
+        let finalPopulation = solver.solve()
+
+        XCTAssertEqual(solver.currentGeneration, 100)
+        XCTAssertTrue(solver.isTerminated)
+        XCTAssertEqual(finalPopulation.count, 50)
+        XCTAssertTrue(finalPopulation.allSatisfy { $0.genes.count == 10 && $0.genes.allSatisfy { (0 ... 100).contains($0) } })
     }
 }

@@ -11,9 +11,11 @@
 // MARK: - GeneticOperators
 
 /// Protocol defining the core genetic algorithm operations required to evolve a population.
-/// The associated type `Element` must conform to `FitnessEvaluatable` to allow fitness-based operations.
+/// The associated type `Element` has the same requirements as `GeneticSolver`'s element,
+/// so a conforming type can be passed to
+/// `GeneticSolver(populationSize:crossoverRate:mutationRate:operators:terminationCheck:)`.
 public protocol GeneticOperators {
-    associatedtype Element: FitnessEvaluatable
+    associatedtype Element: GeneticElement & FitnessEvaluatable
 
     /// Selects two individuals from the population for reproduction.
     /// - Parameter population: The current population array.

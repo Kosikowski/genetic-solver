@@ -225,23 +225,24 @@ print("Best fitness: \(bestIndividual.fitness())")
 
 #### Using Protocol-Based Operators
 
+Pass the operators type to the solver. It uses the type's operators and `newElement()`, including any default implementations the type doesn't override:
+
 ```swift
-var solver = GeneticSolver<MyIndividual>(
+var solver = GeneticSolver(
     populationSize: 50,
     crossoverRate: 0.8,
     mutationRate: 0.1,
-    selectionOperator: { MyGeneticOperators.selectionOperator(population: $0) },
-    crossoverOperator: { MyGeneticOperators.crossoverOperator(parent1: $0, parent2: $1) },
-    mutationOperator: { MyGeneticOperators.mutationOperator(element: $0) },
-    replacementOperator: { MyGeneticOperators.replacementOperator(old: $0, new: $1) },
-    terminationCheck: MyGeneticOperators.fixedGenerationTermination(maxGenerations: 100),
-    newElement: { MyGeneticOperators.newElement() }
+    operators: MyGeneticOperators.self,
+    terminationCheck: MyGeneticOperators.fixedGenerationTermination(maxGenerations: 100)
 )
 
-let finalPopulation = solver.solve(maxGenerations: 200)
+// Runs until the termination check stops it at generation 100.
+let finalPopulation = solver.solve()
 let bestIndividual = finalPopulation.max { $0.fitness() < $1.fitness() }!
 print("Best fitness: \(bestIndividual.fitness())")
 ```
+
+Each operator can still be replaced afterwards, for example `solver.mutationOperator = { ... }`.
 
 ## Advanced Usage
 
@@ -351,7 +352,7 @@ let rouletteSelection: SelectionOperator<MyIndividual> = { population in
 - `GeneticElement`: Protocol for types that can participate in genetic algorithms
 - `FitnessEvaluatable`: Protocol for types that can be evaluated for fitness
 - `GeneticSolver<Element>`: Main solver class with state tracking
-- `GeneticOperators`: Protocol defining core genetic algorithm operations
+- `GeneticOperators`: Protocol defining core genetic algorithm operations; pass a conforming type to `GeneticSolver(populationSize:crossoverRate:mutationRate:operators:terminationCheck:)`
 
 ### Solver State and Methods
 
