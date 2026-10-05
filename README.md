@@ -506,7 +506,7 @@ To run the tests for an Apple platform the way CI does, with the Xcode selected 
 
 ```bash
 ./scripts/test-apple.sh macOS    # swift test
-./scripts/test-apple.sh iOS      # xcodebuild test on the newest iOS simulator (also tvOS, watchOS, visionOS)
+./scripts/test-apple.sh iOS      # xcodebuild test on the newest iOS simulator the selected Xcode's SDK supports (also tvOS, watchOS, visionOS)
 ```
 
 ### Releasing
