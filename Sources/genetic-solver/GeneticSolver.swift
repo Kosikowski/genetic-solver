@@ -312,6 +312,10 @@ public struct GeneticSolver<Element: GeneticElement> {
     @discardableResult
     public mutating func step() -> Bool {
         guard !isTerminated else { return true }
+        // A generator of a concrete type, so that the standard library's random
+        // functions are specialized for it (see `AnyRandomNumberGenerator`).
+        var generator = AnyRandomNumberGenerator(randomNumberGenerator)
+        defer { randomNumberGenerator = generator.base }
         // Elitism
         let elite = Self.fittest(eliteCount, of: currentPopulation)
         let offspringCount = populationSize - elite.count
@@ -319,7 +323,7 @@ public struct GeneticSolver<Element: GeneticElement> {
         var offspring: [Offspring] = []
         while offspring.count < offspringCount {
             let (parent1, parent2) = selectionOperator(currentPopulation)
-            let children = Double.random(in: 0 ..< 1, using: &randomNumberGenerator) < crossoverRate
+            let children = Double.random(in: 0 ..< 1, using: &generator) < crossoverRate
                 ? crossoverOperator(parent1.element, parent2.element)
                 : []
             // Copy the parents when crossover is skipped or returns no children,
@@ -333,7 +337,7 @@ public struct GeneticSolver<Element: GeneticElement> {
         offspring = Array(offspring.prefix(offspringCount))
         // Mutation
         let mutated: [Offspring] = offspring.map { candidate in
-            Double.random(in: 0 ..< 1, using: &randomNumberGenerator) < mutationRate
+            Double.random(in: 0 ..< 1, using: &generator) < mutationRate
                 ? .new(mutationOperator(candidate.element))
                 : candidate
         }

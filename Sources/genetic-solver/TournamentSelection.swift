@@ -33,7 +33,9 @@ public extension GeneticSolver {
         if tournamentSize < 1 {
             fatalError("tournamentSize must be at least 1, but is \(tournamentSize)")
         }
-        var generator = generator
+        // A generator of a concrete type, so that the standard library's random
+        // functions are specialized for it (see `AnyRandomNumberGenerator`).
+        var generator = AnyRandomNumberGenerator(generator)
         return { population in
             tournamentPair(from: population, size: tournamentSize, using: &generator)
         }

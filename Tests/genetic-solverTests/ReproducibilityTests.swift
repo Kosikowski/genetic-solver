@@ -24,31 +24,6 @@ private struct ConstantGenerator: RandomNumberGenerator {
     }
 }
 
-// MARK: - SharedCountingGenerator
-
-/// A generator that is a class, so every copy of a solver that holds it
-/// draws from the same instance. Counts the numbers drawn.
-private final class SharedCountingGenerator: RandomNumberGenerator {
-    // MARK: Properties
-
-    private(set) var draws = 0
-
-    private var base: SeededRandomNumberGenerator
-
-    // MARK: Lifecycle
-
-    init(seed: UInt64) {
-        base = SeededRandomNumberGenerator(seed: seed)
-    }
-
-    // MARK: Functions
-
-    func next() -> UInt64 {
-        draws += 1
-        return base.next()
-    }
-}
-
 // MARK: - ReproducibilityTests
 
 final class ReproducibilityTests: XCTestCase {
@@ -130,6 +105,52 @@ final class ReproducibilityTests: XCTestCase {
         never.randomNumberGenerator = ConstantGenerator(value: .max)
         never.step()
         XCTAssertEqual(never.currentPopulation.map(\.element.id), [0, 1, 0, 1], "Copied parents, not mutated")
+    }
+
+    /// The solver keeps its generator's state from one generation to the
+    /// next: after each generation, `randomNumberGenerator` continues where
+    /// that generation's decisions left off.
+    func testRandomNumberGeneratorKeepsItsStateAcrossGenerations() {
+        var solver = makeMarkingSolver(crossoverRate: 0.5, mutationRate: 0.5)
+        solver.randomNumberGenerator = SeededRandomNumberGenerator(seed: 21)
+        var reference = SeededRandomNumberGenerator(seed: 21)
+
+        for generation in 1 ... 5 {
+            solver.step()
+            // Each generation of 4 makes 2 crossover decisions, one per pair,
+            // and 4 mutation decisions, and each decision takes one number.
+            for _ in 0 ..< 6 {
+                _ = reference.next()
+            }
+            var fromSolver = solver.randomNumberGenerator
+            var expected = reference
+            XCTAssertEqual(fromSolver.next(), expected.next(), "generation \(generation)")
+        }
+    }
+
+    func testTerminatedStepDrawsNoNumbers() {
+        var solver = makeDeterministicSolver(terminationCheck: { _, _ in true })
+        solver.randomNumberGenerator = SeededRandomNumberGenerator(seed: 22)
+
+        XCTAssertTrue(solver.step())
+
+        var fromSolver = solver.randomNumberGenerator
+        var expected = SeededRandomNumberGenerator(seed: 22)
+        XCTAssertEqual(fromSolver.next(), expected.next())
+    }
+
+    func testReadingAndSettingTheGeneratorChangesNothing() {
+        var untouched = makeMarkingSolver(crossoverRate: 0.5, mutationRate: 0.5)
+        untouched.randomNumberGenerator = SeededRandomNumberGenerator(seed: 23)
+        var touched = untouched
+
+        for _ in 0 ..< 5 {
+            let generator = touched.randomNumberGenerator
+            touched.randomNumberGenerator = generator
+            untouched.step()
+            touched.step()
+            XCTAssertEqual(touched.currentPopulation.map(\.element.id), untouched.currentPopulation.map(\.element.id))
+        }
     }
 
     func testCopiedSolverMakesTheSameDecisions() {

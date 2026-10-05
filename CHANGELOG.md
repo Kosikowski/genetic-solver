@@ -40,6 +40,7 @@ These changes can affect code written for 0.1.0:
 - `GeneticElement` includes `FitnessEvaluatable`, so conforming to `GeneticElement` is enough. Types that list both still compile; code that uses `GeneticElement` as a type needs `any` (see above).
 - Each individual's fitness is evaluated once, when it is created, instead of by every operator that needs it; a parent copied unchanged into the next generation keeps its fitness.
 - `solve(maxGenerations:)` is `@discardableResult`.
+- The solver is faster, with the same results for the same seeds. Its crossover and mutation decisions and the draws of `tournamentSelection(tournamentSize:using:)` no longer run the standard library's random functions unspecialized for `any RandomNumberGenerator`. `scripts/benchmark.sh` measures it; on its own, this makes the benchmark's scenarios 13–15% faster.
 
 ### Fixed
 

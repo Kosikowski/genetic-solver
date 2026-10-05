@@ -154,3 +154,28 @@ struct Measured: GeneticElement {
         value
     }
 }
+
+// MARK: - SharedCountingGenerator
+
+/// A generator that is a class, so every copy of a solver or wrapper that
+/// holds it draws from the same instance. Counts the numbers drawn.
+final class SharedCountingGenerator: RandomNumberGenerator {
+    // MARK: Properties
+
+    private(set) var draws = 0
+
+    private var base: SeededRandomNumberGenerator
+
+    // MARK: Lifecycle
+
+    init(seed: UInt64) {
+        base = SeededRandomNumberGenerator(seed: seed)
+    }
+
+    // MARK: Functions
+
+    func next() -> UInt64 {
+        draws += 1
+        return base.next()
+    }
+}
