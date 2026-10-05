@@ -48,7 +48,7 @@ Add the package to your `Package.swift`, then add its `genetic-solver` product t
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/Kosikowski/genetic-solver.git", from: "0.1.0"),
+    .package(url: "https://github.com/Kosikowski/genetic-solver.git", from: "0.2.0"),
 ],
 targets: [
     .target(
@@ -57,6 +57,8 @@ targets: [
     ),
 ]
 ```
+
+The API described in this README needs version 0.2.0 or later; [CHANGELOG.md](CHANGELOG.md) lists what changed since 0.1.0 and what to update when upgrading. If 0.2.0 hasn't been released yet, depend on the main branch instead: `.package(url: "https://github.com/Kosikowski/genetic-solver.git", branch: "main")`.
 
 Or add it to your Xcode project:
 1. File → Add Package Dependencies
@@ -513,6 +515,8 @@ To run the tests for an Apple platform the way CI does, with the Xcode selected 
 ```
 
 ### Releasing
+
+Before tagging a release, rename the "Unreleased" section of [CHANGELOG.md](CHANGELOG.md) to the new version, and update the version in the installation snippet above if the major or minor version changes.
 
 Release tags are named `v<semantic version>`, for example `v0.2.0` or `v0.3.0-beta.1`. Pushing such a tag starts the Release workflow, which checks the tag name, runs the Apple, Linux and Windows tests, and then publishes a GitHub release with an installation snippet (`from: "0.2.0"`, without the `v`) followed by notes generated from the merged pull requests. Versions with a pre-release part, like `-beta.1`, are published as pre-releases.
 

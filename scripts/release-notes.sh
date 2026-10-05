@@ -42,5 +42,5 @@ Add the package to your \`Package.swift\`:
 .package(url: "https://github.com/$repository.git", from: "$version"),
 \`\`\`
 
-See the [README](https://github.com/$repository#readme) for requirements and usage.
+See the [README](https://github.com/$repository#readme) for requirements and usage, and the [changelog](https://github.com/$repository/blob/$tag/CHANGELOG.md) for what changed and how to upgrade.
 EOF
