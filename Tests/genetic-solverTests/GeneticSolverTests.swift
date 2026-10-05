@@ -1,5 +1,5 @@
 //  GeneticSolverTests.swift
-//  RubicCubeTests
+//  genetic-solverTests
 //
 //  Created by Mateusz Kosikowski on 05/02/2025.
 

@@ -1,5 +1,5 @@
 //  FitnessEvaluatable.swift
-//  RubicCubeTests
+//  genetic-solver
 //
 //  Created by Mateusz Kosikowski on 05/02/2024.
 //
