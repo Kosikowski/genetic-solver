@@ -13,7 +13,7 @@
 /// Protocol defining the core genetic algorithm operations required to evolve a population.
 /// The associated type `Element` has the same requirements as `GeneticSolver`'s element,
 /// so a conforming type can be passed to
-/// `GeneticSolver(populationSize:crossoverRate:mutationRate:operators:terminationCheck:)`.
+/// `GeneticSolver(populationSize:crossoverRate:mutationRate:eliteCount:operators:terminationCheck:)`.
 public protocol GeneticOperators {
     associatedtype Element: GeneticElement
 

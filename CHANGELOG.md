@@ -27,7 +27,7 @@ These changes can affect code written for 0.1.0:
 ### Added
 
 - `EvaluatedElement` pairs an individual with its fitness, evaluated once.
-- `GeneticSolver(populationSize:crossoverRate:mutationRate:operators:terminationCheck:)` creates a solver from a `GeneticOperators` type.
+- `GeneticSolver(populationSize:crossoverRate:mutationRate:eliteCount:operators:terminationCheck:)` creates a solver from a `GeneticOperators` type.
 - `reset()` starts a new run with a new population.
 - `isTerminated` keeps the latest result of the termination check, and `checkTermination()` calls the check again for the current population.
 - `bestElement` returns the fittest individual of the current population.

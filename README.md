@@ -373,7 +373,7 @@ let rouletteSelection: SelectionOperator<MyIndividual> = { population in
 - `FitnessEvaluatable`: Protocol for types that can be evaluated for fitness
 - `EvaluatedElement<Element>`: An individual (`element`) with its `fitness`, evaluated once when the value is created. The population, the selection and replacement operators, the termination check and `bestElement` use it; `EvaluatedElement(_:)` evaluates a new individual
 - `GeneticSolver<Element>`: The solver. It is a struct, so copying it copies its state: population, generation count, termination result and `randomNumberGenerator`. A `SeededRandomNumberGenerator` is copied with its state, so the copy makes the same crossover and mutation decisions; the system generator has no state to copy, and a generator that is a class is shared. The operators are closures, so any state they capture, such as the generator inside `tournamentSelection` or a counter in a termination check, is shared by the copies
-- `GeneticOperators`: Protocol defining core genetic algorithm operations; pass a conforming type to `GeneticSolver(populationSize:crossoverRate:mutationRate:operators:terminationCheck:)`
+- `GeneticOperators`: Protocol defining core genetic algorithm operations; pass a conforming type to `GeneticSolver(populationSize:crossoverRate:mutationRate:eliteCount:operators:terminationCheck:)`
 
 ### Solver State and Methods
 

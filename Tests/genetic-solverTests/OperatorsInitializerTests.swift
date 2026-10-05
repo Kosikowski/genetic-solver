@@ -1,7 +1,7 @@
 //  OperatorsInitializerTests.swift
 //  genetic-solverTests
 //
-//  Tests GeneticSolver(populationSize:crossoverRate:mutationRate:operators:terminationCheck:).
+//  Tests GeneticSolver(populationSize:crossoverRate:mutationRate:eliteCount:operators:terminationCheck:).
 
 import XCTest
 @testable import genetic_solver
