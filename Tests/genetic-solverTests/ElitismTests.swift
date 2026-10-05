@@ -6,6 +6,51 @@
 import XCTest
 @testable import genetic_solver
 
+// MARK: - ComparisonCounter
+
+/// Counts how often fitness values are compared.
+private final class ComparisonCounter {
+    var count = 0
+}
+
+// MARK: - CountedFitness
+
+/// A fitness that counts its comparisons (`<` and `==`).
+private struct CountedFitness: Comparable {
+    // MARK: Properties
+
+    let value: Int
+    let counter: ComparisonCounter
+
+    // MARK: Static Functions
+
+    static func < (lhs: Self, rhs: Self) -> Bool {
+        lhs.counter.count += 1
+        return lhs.value < rhs.value
+    }
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.counter.count += 1
+        return lhs.value == rhs.value
+    }
+}
+
+// MARK: - Ranked
+
+/// An individual whose fitness counts its comparisons.
+private struct Ranked: GeneticElement {
+    // MARK: Properties
+
+    let id: Int
+    let rank: CountedFitness
+
+    // MARK: Functions
+
+    func fitness() -> CountedFitness {
+        rank
+    }
+}
+
 // MARK: - ElitismTests
 
 final class ElitismTests: XCTestCase {
@@ -242,6 +287,68 @@ final class ElitismTests: XCTestCase {
         XCTAssertEqual(Solver.fittest(9, of: population).map(\.element.id), [1, 3, 4, 0, 2], "Not more than there are")
         XCTAssertTrue(Solver.fittest(0, of: population).isEmpty)
         XCTAssertTrue(Solver.fittest(2, of: []).isEmpty)
+    }
+
+    /// `fittest(_:of:)` keeps only `count` individuals instead of sorting
+    /// the population; it must still return exactly what a stable sort by
+    /// the same rule returns, for every count, with ties and NaN.
+    func testFittestMatchesASortedReference() {
+        var random = SeededRandomNumberGenerator(seed: 13)
+        let values: [Double] = [0, 1, 1, 2, 3, 3, 3, -1, .nan, .infinity, -.infinity]
+
+        for _ in 0 ..< 300 {
+            let size = Int.random(in: 0 ... 25, using: &random)
+            let population = (0 ..< size).map { EvaluatedElement(Measured(id: $0, value: values.randomElement(using: &random)!)) }
+            let reference = population.indices.sorted { first, second in
+                if isFitter(population[first].fitness, than: population[second].fitness) {
+                    return true
+                }
+                if isFitter(population[second].fitness, than: population[first].fitness) {
+                    return false
+                }
+                return first < second
+            }
+
+            for count in 0 ... size + 2 {
+                XCTAssertEqual(
+                    GeneticSolver<Measured>.fittest(count, of: population).map(\.element.id),
+                    Array(reference.prefix(count)),
+                    "size \(size), count \(count)"
+                )
+            }
+        }
+    }
+
+    /// Picking 2 of 1,000 shuffled individuals takes about one ranking
+    /// (three comparisons) per individual: about 3,100 comparisons. Sorting
+    /// the whole population, as before, took about 70,000.
+    func testFittestComparesAboutOncePerIndividualForASmallCount() {
+        let counter = ComparisonCounter()
+        var random = SeededRandomNumberGenerator(seed: 14)
+        let population = (0 ..< 1000).shuffled(using: &random).enumerated().map {
+            EvaluatedElement(Ranked(id: $0.offset, rank: CountedFitness(value: $0.element, counter: counter)))
+        }
+        counter.count = 0
+
+        let elite = GeneticSolver<Ranked>.fittest(2, of: population)
+
+        XCTAssertEqual(elite.map(\.fitness.value), [999, 998])
+        XCTAssertLessThan(counter.count, 4000)
+    }
+
+    /// In the worst order, weakest first, each individual is fitter than all
+    /// the kept ones, so it is also placed with a binary search: about 9,000
+    /// comparisons for 2 of 1,000, still one pass. (Sorting an already
+    /// ordered population is cheaper, but populations are rarely ordered.)
+    func testFittestStaysLinearInTheWorstOrder() {
+        let counter = ComparisonCounter()
+        let population = (0 ..< 1000).map { EvaluatedElement(Ranked(id: $0, rank: CountedFitness(value: $0, counter: counter))) }
+        counter.count = 0
+
+        let elite = GeneticSolver<Ranked>.fittest(2, of: population)
+
+        XCTAssertEqual(elite.map(\.fitness.value), [999, 998])
+        XCTAssertLessThan(counter.count, 10000)
     }
 
     func testFittestEvaluatesNothing() {

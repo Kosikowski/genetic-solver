@@ -13,15 +13,34 @@ extension GeneticSolver {
     /// other fitness (see `isFitter(_:than:)`).
     static func fittest(_ count: Int, of population: [EvaluatedElement<Element>]) -> [EvaluatedElement<Element>] {
         guard count > 0 else { return [] }
-        let ranked = population.indices.sorted { first, second in
-            if isFitter(population[first].fitness, than: population[second].fitness) {
-                return true
+        // Indices of the fittest individuals so far, fittest first. Only
+        // `count` are kept, so this needs about one comparison per individual
+        // when `count` is small, instead of sorting the whole population.
+        var kept: [Int] = []
+        kept.reserveCapacity(min(count, population.count))
+        for index in population.indices {
+            let fitness = population[index].fitness
+            // Not fitter than the weakest of a full list: not kept.
+            if kept.count == count, !isFitter(fitness, than: population[kept[count - 1]].fitness) {
+                continue
             }
-            if isFitter(population[second].fitness, than: population[first].fitness) {
-                return false
+            // Insert after every kept individual that is at least as fit, so
+            // on a tie the earlier individual comes first.
+            var low = 0
+            var high = kept.count
+            while low < high {
+                let middle = (low + high) / 2
+                if isFitter(fitness, than: population[kept[middle]].fitness) {
+                    high = middle
+                } else {
+                    low = middle + 1
+                }
             }
-            return first < second
+            kept.insert(index, at: low)
+            if kept.count > count {
+                kept.removeLast()
+            }
         }
-        return ranked.prefix(count).map { population[$0] }
+        return kept.map { population[$0] }
     }
 }

@@ -7,22 +7,6 @@
 import XCTest
 @testable import genetic_solver
 
-// MARK: - Measured
-
-/// An individual with a given floating-point fitness, which may be NaN.
-private struct Measured: GeneticElement {
-    // MARK: Properties
-
-    let id: Int
-    let value: Double
-
-    // MARK: Functions
-
-    func fitness() -> Double {
-        value
-    }
-}
-
 // MARK: - RankingTests
 
 final class RankingTests: XCTestCase {

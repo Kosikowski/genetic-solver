@@ -138,3 +138,19 @@ struct ScriptedGenerator: RandomNumberGenerator {
         values.count > 1 ? values.removeFirst() : values[0]
     }
 }
+
+// MARK: - Measured
+
+/// An individual with a given floating-point fitness, which may be NaN.
+struct Measured: GeneticElement {
+    // MARK: Properties
+
+    let id: Int
+    let value: Double
+
+    // MARK: Functions
+
+    func fitness() -> Double {
+        value
+    }
+}
