@@ -78,3 +78,36 @@ func makeDeterministicSolver(
         newElement: factory.make
     )
 }
+
+// MARK: - FitnessCallCounter
+
+/// Counts `fitness()` calls across all individuals that share it.
+final class FitnessCallCounter {
+    var calls = 0
+}
+
+// MARK: - ScoredIndividual
+
+/// An individual with a given fitness that counts its `fitness()` calls.
+struct ScoredIndividual: GeneticElement {
+    // MARK: Properties
+
+    let id: Int
+    let score: Int
+    let counter: FitnessCallCounter
+
+    // MARK: Lifecycle
+
+    init(id: Int, score: Int, counter: FitnessCallCounter = FitnessCallCounter()) {
+        self.id = id
+        self.score = score
+        self.counter = counter
+    }
+
+    // MARK: Functions
+
+    func fitness() -> Int {
+        counter.calls += 1
+        return score
+    }
+}

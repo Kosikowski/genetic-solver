@@ -45,6 +45,16 @@ public struct GeneticSolver<Element: GeneticElement> {
     /// `reset()`.
     public var newElement: () -> Element
 
+    /// The random number generator for the solver's own random decisions:
+    /// whether `crossoverOperator` is applied to a pair of parents, and whether
+    /// `mutationOperator` is applied to an individual. It starts as
+    /// `SystemRandomNumberGenerator`.
+    ///
+    /// To make runs reproducible, set it to a `SeededRandomNumberGenerator` and
+    /// give your operators seeded generators too. Copying the solver copies
+    /// the generator's state, so the copies make the same decisions.
+    public var randomNumberGenerator: any RandomNumberGenerator = SystemRandomNumberGenerator()
+
     /// Decides whether the run is finished, given the generation count and
     /// the population.
     ///
@@ -201,7 +211,7 @@ public struct GeneticSolver<Element: GeneticElement> {
         var offspring: [Element] = []
         while offspring.count < populationSize {
             let (parent1, parent2) = selectionOperator(currentPopulation)
-            let children = Double.random(in: 0 ..< 1) < crossoverRate ? crossoverOperator(parent1, parent2) : []
+            let children = Double.random(in: 0 ..< 1, using: &randomNumberGenerator) < crossoverRate ? crossoverOperator(parent1, parent2) : []
             // Copy the parents when crossover is skipped or returns no children,
             // so every pass adds at least one element and the loop always ends.
             offspring.append(contentsOf: children.isEmpty ? [parent1, parent2] : children)
@@ -209,7 +219,7 @@ public struct GeneticSolver<Element: GeneticElement> {
         offspring = Array(offspring.prefix(populationSize))
         // Mutation
         let mutated = offspring.map { elem in
-            Double.random(in: 0 ..< 1) < mutationRate ? mutationOperator(elem) : elem
+            Double.random(in: 0 ..< 1, using: &randomNumberGenerator) < mutationRate ? mutationOperator(elem) : elem
         }
         // Replacement
         currentPopulation = replacementOperator(currentPopulation, mutated)

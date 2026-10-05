@@ -318,6 +318,41 @@ var solver = GeneticSolver<MyIndividual>(
 
 The elite replace the last new individuals, so the population size doesn't change. Each individual of the current population has its fitness evaluated once per generation.
 
+### Reproducible Runs
+
+By default every random choice uses the system random number generator, so each run is different. To repeat a run exactly, for example to debug it, use a `SeededRandomNumberGenerator` wherever randomness is used: in your operators, in the selection operator, and for the solver's own decisions about when to apply crossover and mutation:
+
+```swift
+var random = SeededRandomNumberGenerator(seed: 42) // For your own operators
+
+var solver = GeneticSolver<MyIndividual>(
+    populationSize: 50,
+    crossoverRate: 0.8,
+    mutationRate: 0.1,
+    selectionOperator: GeneticSolver.tournamentSelection(using: SeededRandomNumberGenerator(seed: 1)),
+    crossoverOperator: { parent1, parent2 in
+        let point = Int.random(in: 0..<parent1.genes.count, using: &random)
+        return [
+            MyIndividual(genes: Array(parent1.genes[..<point]) + Array(parent2.genes[point...])),
+            MyIndividual(genes: Array(parent2.genes[..<point]) + Array(parent1.genes[point...])),
+        ]
+    },
+    mutationOperator: { individual in
+        var mutant = individual
+        mutant.genes[Int.random(in: 0..<mutant.genes.count, using: &random)] = Int.random(in: 0...100, using: &random)
+        return mutant
+    },
+    replacementOperator: { _, new in new },
+    terminationCheck: { _, population in population.contains { $0.fitness() >= 950 } },
+    newElement: { MyIndividual(genes: (0..<10).map { _ in Int.random(in: 0...100, using: &random) }) }
+)
+solver.randomNumberGenerator = SeededRandomNumberGenerator(seed: 2) // For the solver's own decisions
+
+let finalPopulation = solver.solve(maxGenerations: 200) // The same result on every run
+```
+
+`SeededRandomNumberGenerator` produces the same numbers for the same seed on every platform. Numbers the standard library derives from them, like `Int.random(in:using:)`, were identical on Swift 5.9, 6.1 and 6.4, but a future Swift version could change them. `tournamentSelection(tournamentSize:using:)` also lets you choose the tournament size; larger tournaments favor fitter individuals more strongly.
+
 ### Roulette Wheel Selection
 
 Each individual's chance of being picked is proportional to its fitness, so fitness must be finite and not negative. Individuals with fitness 0 are never picked, unless every individual has fitness 0 (as in a knapsack population where every selection is overweight); then parents are picked at random:
@@ -364,6 +399,7 @@ let rouletteSelection: SelectionOperator<MyIndividual> = { population in
 - `currentGeneration`: The number of generations run since `init` or the last `reset()`
 - `bestElement`: The fittest individual in the current population (with elitist replacement, the best found so far)
 - `isTerminated`: Whether the termination check passed for the current population
+- `randomNumberGenerator`: The generator for the solver's decisions about applying crossover and mutation (the system generator unless you set one)
 - `step()`: Runs one generation and returns `isTerminated`; does nothing once terminated
 - `solve(maxGenerations:)`: Runs generations until terminated or `currentGeneration` reaches `maxGenerations`, and returns the population
 - `reset()`: Starts over with a new population at generation 0
@@ -371,6 +407,10 @@ let rouletteSelection: SelectionOperator<MyIndividual> = { population in
 ### Parameter Rules
 
 `populationSize` must be at least 1, and `crossoverRate` and `mutationRate` must be between 0 and 1. These are settable properties, so the solver checks them in `init`, `reset()` and `step()`, and stops the program with a message such as `crossoverRate must be between 0 and 1, but is 1.5` when one is out of range. A replacement operator must return at least one individual.
+
+### Random Numbers
+
+- `SeededRandomNumberGenerator`: A random number generator that repeats its sequence for the same seed (SplitMix64; not for cryptography)
 
 ### Operator Types
 
@@ -384,7 +424,7 @@ let rouletteSelection: SelectionOperator<MyIndividual> = { population in
 
 The `GeneticOperators` protocol provides default implementations for all genetic algorithm operations:
 
-- `selectionOperator`: Tournament selection with tournament size of 3
+- `selectionOperator`: Tournament selection with tournament size of 3; `GeneticSolver.tournamentSelection(tournamentSize:using:)` takes another size and a random number generator
 - `crossoverOperator`: Returns parents unchanged (no crossover)
 - `mutationOperator`: Returns element unchanged (no mutation)
 - `replacementOperator`: Generational replacement (replace all, so the best individual can be lost); `GeneticSolver.elitistReplacement(eliteCount:)` keeps the fittest

@@ -539,4 +539,49 @@ final class ReadmeExamplesTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(solver.bestElement.fitness(), 950)
         XCTAssertEqual(solver.currentPopulation.count, 50)
     }
+
+    func testReproducibleRunsGiveTheSameResult() {
+        let first = readmeReproducibleRun()
+        let second = readmeReproducibleRun()
+
+        XCTAssertEqual(first.0, second.0)
+        XCTAssertEqual(first.1, second.1)
+        XCTAssertGreaterThanOrEqual(first.2, 950, "The example reaches its target")
+        XCTAssertLessThan(first.1, 200)
+    }
+
+    // MARK: Reproducible Runs
+
+    /// The Reproducible Runs example, wrapped in a function. Returns the final
+    /// genes, the generation count, and the best fitness.
+    private func readmeReproducibleRun() -> ([[Int]], Int, Double) {
+        var random = SeededRandomNumberGenerator(seed: 42) // For your own operators
+
+        var solver = GeneticSolver<MyIndividual>(
+            populationSize: 50,
+            crossoverRate: 0.8,
+            mutationRate: 0.1,
+            selectionOperator: GeneticSolver.tournamentSelection(using: SeededRandomNumberGenerator(seed: 1)),
+            crossoverOperator: { parent1, parent2 in
+                let point = Int.random(in: 0 ..< parent1.genes.count, using: &random)
+                return [
+                    MyIndividual(genes: Array(parent1.genes[..<point]) + Array(parent2.genes[point...])),
+                    MyIndividual(genes: Array(parent2.genes[..<point]) + Array(parent1.genes[point...])),
+                ]
+            },
+            mutationOperator: { individual in
+                var mutant = individual
+                mutant.genes[Int.random(in: 0 ..< mutant.genes.count, using: &random)] = Int.random(in: 0 ... 100, using: &random)
+                return mutant
+            },
+            replacementOperator: { _, new in new },
+            terminationCheck: { _, population in population.contains { $0.fitness() >= 950 } },
+            newElement: { MyIndividual(genes: (0 ..< 10).map { _ in Int.random(in: 0 ... 100, using: &random) }) }
+        )
+        solver.randomNumberGenerator = SeededRandomNumberGenerator(seed: 2) // For the solver's own decisions
+
+        let finalPopulation = solver.solve(maxGenerations: 200) // The same result on every run
+
+        return (finalPopulation.map(\.genes), solver.currentGeneration, solver.bestElement.fitness())
+    }
 }

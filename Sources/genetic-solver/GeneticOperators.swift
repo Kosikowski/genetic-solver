@@ -55,18 +55,14 @@ public extension GeneticOperators {
     /// Default selection operator implementing tournament selection with a tournament size of 3.
     /// Each parent is the best of three randomly chosen candidates; on a tie, the candidate
     /// drawn first wins. Each candidate's fitness is evaluated once.
+    ///
+    /// It uses the system random number generator. For another tournament size or a seeded
+    /// generator, use `GeneticSolver.tournamentSelection(tournamentSize:using:)`.
     static func selectionOperator(population: [Element]) -> (Element, Element) {
-        if population.isEmpty {
-            fatalError("selectionOperator needs at least one individual")
-        }
-        func selectOne() -> Element {
-            let candidates = (0 ..< 3).map { _ -> (element: Element, fitness: Element.Fitness) in
-                let candidate = population.randomElement()!
-                return (candidate, candidate.fitness())
-            }
-            return candidates.max { $0.fitness < $1.fitness }!.element
-        }
-        return (selectOne(), selectOne())
+        var generator = SystemRandomNumberGenerator()
+        let first = tournamentWinner(of: population, size: 3, using: &generator)
+        let second = tournamentWinner(of: population, size: 3, using: &generator)
+        return (first, second)
     }
 
     /// Default crossover operator that returns the parents unchanged (no crossover).
