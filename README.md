@@ -556,7 +556,7 @@ The hook versions, including the SwiftFormat version CI uses, are pinned in `.pr
 
 - **Format Check**: Every PR is automatically checked for proper formatting
 - **Auto-Format**: Weekly automated formatting PRs are created if needed
-- **Pre-commit**: Local hooks ensure code is formatted before commits
+- **Pre-commit**: Local hooks ensure code is formatted before commits, and CI runs the same hooks (except SwiftFormat, which has its own check) on every file
 
 #### Auto-Format Pull Requests
 
