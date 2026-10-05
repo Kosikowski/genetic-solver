@@ -268,6 +268,37 @@ final class ReproducibilityTests: XCTestCase {
         }
     }
 
+    /// Tournaments draw indices and copy only the winner. They must pick
+    /// what drawing the individuals themselves with `randomElement(using:)`,
+    /// as earlier versions did, picks from the same numbers, and draw as
+    /// many numbers, so that seeded runs don't change.
+    func testTournamentsPickWhatDrawingIndividualsWithRandomElementPicks() {
+        for populationSize in [1, 2, 3, 7, 50] {
+            // Fitness values repeat every 4 individuals, so there are ties,
+            // and every fifth individual has a NaN fitness.
+            let population = (0 ..< populationSize).map {
+                EvaluatedElement(Measured(id: $0, value: $0 % 5 == 4 ? .nan : Double($0 % 4)))
+            }
+            for size in [1, 2, 3, 5, 10] {
+                for seed in UInt64(0) ..< 20 {
+                    var generator = SeededRandomNumberGenerator(seed: seed)
+                    var reference = SeededRandomNumberGenerator(seed: seed)
+                    for _ in 0 ..< 10 {
+                        let pair = tournamentPair(from: population, size: size, using: &generator)
+                        let first = referenceTournamentWinner(of: population, size: size, using: &reference)
+                        let second = referenceTournamentWinner(of: population, size: size, using: &reference)
+                        XCTAssertEqual(
+                            [pair.0.element.id, pair.1.element.id],
+                            [first.element.id, second.element.id],
+                            "population \(populationSize), size \(size), seed \(seed)"
+                        )
+                    }
+                    XCTAssertEqual(generator.next(), reference.next(), "population \(populationSize), size \(size), seed \(seed): the same number of draws")
+                }
+            }
+        }
+    }
+
     func testTournamentSizeOneDrawsUniformly() {
         XCTAssertEqual(weakShare(tournamentSize: 1), 0.5, accuracy: 0.03)
     }
@@ -335,6 +366,26 @@ final class ReproducibilityTests: XCTestCase {
     }
 
     // MARK: Helpers
+
+    /// A tournament as earlier versions ran it: drawing the individuals
+    /// themselves with `randomElement(using:)` and keeping the fittest; on a
+    /// tie, the one drawn first.
+    private func referenceTournamentWinner<Element>(
+        of population: [EvaluatedElement<Element>],
+        size: Int,
+        using generator: inout some RandomNumberGenerator
+    )
+        -> EvaluatedElement<Element>
+    {
+        var winner = population.randomElement(using: &generator)!
+        for _ in 1 ..< size {
+            let candidate = population.randomElement(using: &generator)!
+            if isFitter(candidate.fitness, than: winner.fitness) {
+                winner = candidate
+            }
+        }
+        return winner
+    }
 
     /// A solver whose crossover adds 100 to each parent's id and whose
     /// mutation adds 1000, so the ids show which operators were applied.

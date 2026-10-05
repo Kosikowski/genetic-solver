@@ -65,6 +65,11 @@ func tournamentPair<Element: FitnessEvaluatable>(
 /// Returns the fittest of `size` individuals drawn at random, with
 /// replacement, from `population`; on a tie, the one drawn first. A NaN
 /// fitness ranks below every other fitness (see `isFitter(_:than:)`).
+///
+/// It draws indices and compares the stored fitness values, so only the
+/// winner is copied, however large the individuals are. Each index is drawn
+/// as `randomElement(using:)` draws one, so the same numbers pick the same
+/// individuals as drawing them with it would.
 @inlinable
 func tournamentWinner<Element: FitnessEvaluatable>(
     of population: [EvaluatedElement<Element>],
@@ -76,12 +81,12 @@ func tournamentWinner<Element: FitnessEvaluatable>(
     if population.isEmpty {
         fatalError("selectionOperator needs at least one individual")
     }
-    var winner = population.randomElement(using: &generator)!
+    var winner = Int.random(in: 0 ..< population.count, using: &generator)
     for _ in 1 ..< size {
-        let candidate = population.randomElement(using: &generator)!
-        if isFitter(candidate.fitness, than: winner.fitness) {
+        let candidate = Int.random(in: 0 ..< population.count, using: &generator)
+        if isFitter(population[candidate].fitness, than: population[winner].fitness) {
             winner = candidate
         }
     }
-    return winner
+    return population[winner]
 }
