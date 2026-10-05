@@ -458,6 +458,10 @@ To run the tests for an Apple platform the way CI does, with the Xcode selected 
 ./scripts/test-apple.sh iOS      # xcodebuild test on the newest iOS simulator (also tvOS, visionOS)
 ```
 
+### Releasing
+
+Release tags are named `v<semantic version>`, for example `v0.2.0` or `v0.3.0-beta.1`. Pushing such a tag starts the Release workflow, which checks the tag name, runs the Apple, Linux and Windows tests, and then publishes a GitHub release with an installation snippet (`from: "0.2.0"`, without the `v`) followed by notes generated from the merged pull requests. Versions with a pre-release part, like `-beta.1`, are published as pre-releases.
+
 ### Code Formatting
 
 This project uses SwiftFormat to maintain consistent code style. Different SwiftFormat versions can format the same code differently, so the project pins one version as the SwiftFormat `rev` in `.pre-commit-config.yaml`. The pre-commit hook and CI both use that version, and `./scripts/swiftformat-version.sh` prints it.

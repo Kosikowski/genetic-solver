@@ -8,6 +8,8 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+  # Lets the Release workflow run these tests before publishing.
+  workflow_call:
 
 permissions:
   contents: read
