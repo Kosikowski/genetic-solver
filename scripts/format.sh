@@ -33,14 +33,25 @@ fi
 echo -e "${YELLOW}🔍 Checking code formatting...${NC}"
 
 if [ "$CHECK_ONLY" = true ]; then
-    # Just check formatting
-    if swiftformat --lint --config .swiftformat Sources/ Tests/ | grep -q "would have been formatted"; then
-        echo -e "${RED}❌ Code formatting issues found${NC}"
-        swiftformat --lint --config .swiftformat Sources/ Tests/
-        exit 1
-    else
-        echo -e "${GREEN}✅ Code formatting is correct${NC}"
-    fi
+    # Just check formatting. SwiftFormat exits with 0 when everything is
+    # formatted, 1 when some files need formatting, and another non-zero
+    # code when it could not run (for example a missing input path).
+    status=0
+    swiftformat --lint --config .swiftformat Sources/ Tests/ || status=$?
+    case $status in
+        0)
+            echo -e "${GREEN}✅ Code formatting is correct${NC}"
+            ;;
+        1)
+            echo -e "${RED}❌ Code formatting issues found${NC}"
+            echo -e "${YELLOW}Run ./scripts/format.sh to fix them${NC}"
+            exit 1
+            ;;
+        *)
+            echo -e "${RED}❌ SwiftFormat failed with exit code $status${NC}"
+            exit "$status"
+            ;;
+    esac
 else
     # Format the code
     echo -e "${YELLOW}🎨 Formatting code...${NC}"

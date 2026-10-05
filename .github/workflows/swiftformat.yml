@@ -39,19 +39,8 @@ jobs:
         run: |
           brew install swiftformat
 
+      # SwiftFormat exits with a non-zero code when any file needs formatting,
+      # which fails this step and lists every violation in the log.
       - name: Check SwiftFormat
         run: |
           swiftformat --lint --config .swiftformat Sources/ Tests/
-
-      - name: Check if formatting is needed
-        id: check-formatting
-        run: |
-          if swiftformat --lint --config .swiftformat Sources/ Tests/ | grep -q "would have been formatted"; then
-            echo "needs-formatting=true" >> $GITHUB_OUTPUT
-            echo "❌ Code formatting issues found"
-            swiftformat --lint --config .swiftformat Sources/ Tests/
-            exit 1
-          else
-            echo "needs-formatting=false" >> $GITHUB_OUTPUT
-            echo "✅ Code formatting is correct"
-          fi

@@ -42,12 +42,16 @@ jobs:
 
       - name: Check current formatting
         id: check-formatting
+        # SwiftFormat exits with 0 when everything is formatted, 1 when some
+        # files need formatting, and another non-zero code when it could not run.
         run: |
-          if swiftformat --lint --config .swiftformat Sources/ Tests/ | grep -q "would have been formatted"; then
-            echo "needs-formatting=true" >> $GITHUB_OUTPUT
-          else
-            echo "needs-formatting=false" >> $GITHUB_OUTPUT
-          fi
+          status=0
+          swiftformat --lint --config .swiftformat Sources/ Tests/ || status=$?
+          case $status in
+            0) echo "needs-formatting=false" >> "$GITHUB_OUTPUT" ;;
+            1) echo "needs-formatting=true" >> "$GITHUB_OUTPUT" ;;
+            *) echo "SwiftFormat failed with exit code $status"; exit "$status" ;;
+          esac
 
       - name: Format code
         if: steps.check-formatting.outputs.needs-formatting == 'true'
