@@ -51,11 +51,15 @@ public protocol GeneticOperators {
 
 public extension GeneticOperators {
     /// Default selection operator implementing tournament selection with a tournament size of 3.
-    /// Selects the best individual out of three randomly chosen candidates.
+    /// Each parent is the best of three randomly chosen candidates; on a tie, the candidate
+    /// drawn first wins. Each candidate's fitness is evaluated once.
     static func selectionOperator(population: [Element]) -> (Element, Element) {
         func selectOne() -> Element {
-            let candidates = (0 ..< 3).map { _ in population.randomElement()! }
-            return candidates.max { $0.fitness() < $1.fitness() }!
+            let candidates = (0 ..< 3).map { _ -> (element: Element, fitness: Element.Fitness) in
+                let candidate = population.randomElement()!
+                return (candidate, candidate.fitness())
+            }
+            return candidates.max { $0.fitness < $1.fitness }!.element
         }
         return (selectOne(), selectOne())
     }

@@ -22,6 +22,30 @@ private struct MyIndividual: GeneticElement, FitnessEvaluatable {
     }
 }
 
+// MARK: - ExpensiveIndividual
+
+/// The individual from the README's tip on expensive fitness.
+private struct ExpensiveIndividual: GeneticElement, FitnessEvaluatable {
+    // MARK: Properties
+
+    let genes: [Int]
+
+    private let storedFitness: Double
+
+    // MARK: Lifecycle
+
+    init(genes: [Int]) {
+        self.genes = genes
+        storedFitness = Double(genes.reduce(0, +)) // Replace with the expensive calculation
+    }
+
+    // MARK: Functions
+
+    func fitness() -> Double {
+        storedFitness
+    }
+}
+
 // MARK: - ReadmeQuickStart
 
 /// The operators and solver from the README's Quick Start, Option A.
@@ -36,8 +60,11 @@ private enum ReadmeQuickStart {
 
     static let selection: SelectionOperator<MyIndividual> = { population in
         func selectOne() -> MyIndividual {
-            let candidates = (0 ..< 3).map { _ in population.randomElement()! }
-            return candidates.max { $0.fitness() < $1.fitness() }!
+            let candidates = (0 ..< 3).map { _ -> (individual: MyIndividual, fitness: Double) in
+                let candidate = population.randomElement()!
+                return (candidate, candidate.fitness()) // Evaluate each candidate once
+            }
+            return candidates.max { $0.fitness < $1.fitness }!.individual
         }
         return (selectOne(), selectOne())
     }
@@ -267,5 +294,28 @@ final class ReadmeExamplesTests: XCTestCase {
         _ = solver.solve(maxGenerations: 100)
 
         XCTAssertEqual(solver.currentGeneration, 8)
+    }
+
+    // MARK: Expensive fitness tip
+
+    func testExpensiveIndividualReturnsTheFitnessComputedAtCreation() {
+        XCTAssertEqual(ExpensiveIndividual(genes: [1, 2, 3]).fitness(), 6)
+        XCTAssertEqual(ExpensiveIndividual(genes: []).fitness(), 0)
+    }
+
+    func testExpensiveIndividualWorksWithTheSolver() {
+        var solver = GeneticSolver<ExpensiveIndividual>(
+            populationSize: 4,
+            selectionOperator: { ($0[0], $0[1]) },
+            crossoverOperator: { [ExpensiveIndividual(genes: $0.genes + $1.genes)] },
+            mutationOperator: { $0 },
+            replacementOperator: { _, new in new },
+            terminationCheck: { _, _ in false },
+            newElement: { ExpensiveIndividual(genes: [1]) }
+        )
+
+        _ = solver.solve(maxGenerations: 1)
+
+        XCTAssertEqual(solver.currentPopulation.map { $0.fitness() }, [2, 2, 2, 2])
     }
 }

@@ -90,6 +90,24 @@ struct MyIndividual: GeneticElement, FitnessEvaluatable {
 }
 ```
 
+`fitness()` can be called many times for the same individual, for example once per candidate in tournament selection. If it's expensive, compute it once when the individual is created and return the stored value. Keep the genes immutable (`let`) so the stored value can't go out of date, and have your operators create new individuals instead of changing copies:
+
+```swift
+struct ExpensiveIndividual: GeneticElement, FitnessEvaluatable {
+    let genes: [Int]
+    private let storedFitness: Double
+
+    init(genes: [Int]) {
+        self.genes = genes
+        storedFitness = Double(genes.reduce(0, +)) // Replace with the expensive calculation
+    }
+
+    func fitness() -> Double {
+        storedFitness
+    }
+}
+```
+
 ### 2. Implement Genetic Operators
 
 You can implement operators individually or create a `GeneticOperators` conforming type:
@@ -97,11 +115,14 @@ You can implement operators individually or create a `GeneticOperators` conformi
 #### Option A: Individual Operators
 
 ```swift
-// Selection: Tournament selection
+// Selection: Tournament selection (each parent is the best of 3 random candidates)
 let selection: SelectionOperator<MyIndividual> = { population in
     func selectOne() -> MyIndividual {
-        let candidates = (0..<3).map { _ in population.randomElement()! }
-        return candidates.max { $0.fitness() < $1.fitness() }!
+        let candidates = (0..<3).map { _ -> (individual: MyIndividual, fitness: Double) in
+            let candidate = population.randomElement()!
+            return (candidate, candidate.fitness()) // Evaluate each candidate once
+        }
+        return candidates.max { $0.fitness < $1.fitness }!.individual
     }
     return (selectOne(), selectOne())
 }
