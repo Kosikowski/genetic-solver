@@ -181,6 +181,10 @@ public struct GeneticSolver<Element: GeneticElement> {
     /// `init`, or wherever earlier calls to `step()` or `solve(maxGenerations:)`
     /// left off. `maxGenerations` limits the total generation count, not the
     /// number of generations run by this call. Call `reset()` to start over.
+    ///
+    /// The result is the same as `currentPopulation`, so it can be ignored, for
+    /// example when only `bestElement` is needed.
+    @discardableResult
     public mutating func solve(maxGenerations: Int = 1000) -> [Element] {
         while currentGeneration < maxGenerations, !isTerminated {
             step()

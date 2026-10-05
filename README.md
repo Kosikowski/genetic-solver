@@ -209,7 +209,7 @@ var solver = GeneticSolver<MyIndividual>(
 )
 
 // Run until the target is reached, or for at most 200 generations.
-let finalPopulation = solver.solve(maxGenerations: 200)
+solver.solve(maxGenerations: 200)
 print("Best fitness: \(solver.bestElement.fitness())")
 ```
 
@@ -227,7 +227,7 @@ var solver = GeneticSolver(
 )
 
 // Runs until the termination check stops it at generation 100.
-let finalPopulation = solver.solve()
+solver.solve()
 print("Best fitness: \(solver.bestElement.fitness())")
 ```
 
@@ -260,11 +260,11 @@ The solver keeps its population and generation count between calls. `solve(maxGe
 var solver = GeneticSolver<MyIndividual>(/* ... */)
 
 solver.step()                          // Generation 1
-_ = solver.solve(maxGenerations: 50)   // Continues up to generation 50
-_ = solver.solve(maxGenerations: 100)  // Continues up to generation 100
+solver.solve(maxGenerations: 50)       // Continues up to generation 50
+solver.solve(maxGenerations: 100)      // Continues up to generation 100
 
 solver.reset()                         // New population, generation 0
-_ = solver.solve(maxGenerations: 100)  // A fresh run
+solver.solve(maxGenerations: 100)      // A fresh run
 ```
 
 ### Custom Termination Conditions
@@ -348,7 +348,7 @@ var solver = GeneticSolver<MyIndividual>(
 )
 solver.randomNumberGenerator = SeededRandomNumberGenerator(seed: 2) // For the solver's own decisions
 
-let finalPopulation = solver.solve(maxGenerations: 200) // The same result on every run
+solver.solve(maxGenerations: 200) // The same result on every run
 ```
 
 `SeededRandomNumberGenerator` produces the same numbers for the same seed on every platform. Numbers the standard library derives from them, like `Int.random(in:using:)`, were identical on Swift 5.9, 6.1 and 6.4, but a future Swift version could change them. `tournamentSelection(tournamentSize:using:)` also lets you choose the tournament size; larger tournaments favor fitter individuals more strongly.

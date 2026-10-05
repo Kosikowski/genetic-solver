@@ -96,6 +96,16 @@ final class SolverLifecycleTests: XCTestCase {
         XCTAssertEqual(factory.createdCount, 4)
     }
 
+    func testSolveResultCanBeIgnored() {
+        var solver = makeDeterministicSolver()
+
+        // No `_ =`: solve is @discardableResult, so this compiles without a
+        // warning (the tests are also built with -warnings-as-errors).
+        solver.solve(maxGenerations: 2)
+
+        XCTAssertEqual(solver.currentGeneration, 2)
+    }
+
     func testSolveReturnsTheCurrentPopulation() {
         var solver = makeDeterministicSolver(factory: ElementFactory())
 

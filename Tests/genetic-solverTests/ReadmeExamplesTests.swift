@@ -718,8 +718,8 @@ final class ReadmeExamplesTests: XCTestCase {
         )
         solver.randomNumberGenerator = SeededRandomNumberGenerator(seed: 2) // For the solver's own decisions
 
-        let finalPopulation = solver.solve(maxGenerations: 200) // The same result on every run
+        solver.solve(maxGenerations: 200) // The same result on every run
 
-        return (finalPopulation.map(\.genes), solver.currentGeneration, solver.bestElement.fitness())
+        return (solver.currentPopulation.map(\.genes), solver.currentGeneration, solver.bestElement.fitness())
     }
 }
