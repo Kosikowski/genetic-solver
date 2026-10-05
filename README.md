@@ -502,6 +502,15 @@ pre-commit install
 - **Auto-Format**: Weekly automated formatting PRs are created if needed
 - **Pre-commit**: Local hooks ensure code is formatted before commits
 
+#### Auto-Format Pull Requests
+
+GitHub doesn't start other workflows for pull requests opened with the default `GITHUB_TOKEN`, so CI won't check an auto-format pull request on its own. To have CI run on them, give the Auto Format workflow its own token:
+
+1. Create a [fine-grained personal access token](https://github.com/settings/personal-access-tokens/new) with access to this repository only, and the **Contents** and **Pull requests** permissions set to **Read and write**.
+2. Add it as a repository secret named `AUTO_FORMAT_TOKEN` (Settings → Secrets and variables → Actions).
+
+Without that secret, the workflow uses `GITHUB_TOKEN`, which needs **Allow GitHub Actions to create and approve pull requests** turned on (Settings → Actions → General). The pull request then says that its checks must be started by closing and reopening it.
+
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.

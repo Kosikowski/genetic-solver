@@ -45,21 +45,35 @@ jobs:
         run: |
           swiftformat --config .swiftformat Sources/ Tests/
 
+      # Pull requests opened with the default GITHUB_TOKEN don't start other
+      # workflows, so CI wouldn't check them. When the repository has an
+      # AUTO_FORMAT_TOKEN secret (see "Auto-Format Pull Requests" in the
+      # README), the pull request is opened with it and CI runs as usual;
+      # otherwise its description says how to start the checks.
+      - name: Write pull request description
+        if: steps.check-formatting.outputs.needs-formatting == 'true'
+        env:
+          HAS_AUTO_FORMAT_TOKEN: ${{ secrets.AUTO_FORMAT_TOKEN != '' }}
+        run: |
+          cat > "$RUNNER_TEMP/pull-request-body.md" <<'EOF'
+          This pull request formats the Swift files in `Sources/` and `Tests/` with SwiftFormat, using the rules in `.swiftformat` and the SwiftFormat version pinned in `.pre-commit-config.yaml`.
+          EOF
+          if [ "$HAS_AUTO_FORMAT_TOKEN" != true ]; then
+            cat >> "$RUNNER_TEMP/pull-request-body.md" <<'EOF'
+
+          > [!NOTE]
+          > This pull request was opened with the default `GITHUB_TOKEN`, so CI checks don't start automatically. Close and reopen it to run them, or add an `AUTO_FORMAT_TOKEN` secret as described in the README.
+          EOF
+          fi
+
       - name: Create Pull Request
         if: steps.check-formatting.outputs.needs-formatting == 'true'
         uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # v7.0.11
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.AUTO_FORMAT_TOKEN || secrets.GITHUB_TOKEN }}
           commit-message: "style: auto-format code with SwiftFormat"
           title: "style: auto-format code with SwiftFormat"
-          body: |
-            This PR automatically formats the code using SwiftFormat.
-
-            Changes made:
-            - Applied SwiftFormat rules from `.swiftformat` configuration
-            - Formatted all Swift files in `Sources/` and `Tests/` directories
-
-            This is an automated formatting PR to maintain code style consistency.
+          body-path: ${{ runner.temp }}/pull-request-body.md
           branch: auto-format
           delete-branch: true
           labels: |
