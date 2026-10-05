@@ -35,9 +35,18 @@ jobs:
       - name: Clean build directory
         run: rm -rf .build
 
+      # Install the SwiftFormat version pinned in .pre-commit-config.yaml so CI
+      # formats code exactly like the local pre-commit hook.
       - name: Install SwiftFormat
         run: |
-          brew install swiftformat
+          version="$(./scripts/swiftformat-version.sh)"
+          curl -fsSL -o "$RUNNER_TEMP/swiftformat.zip" \
+            "https://github.com/nicklockwood/SwiftFormat/releases/download/${version}/swiftformat.zip"
+          unzip -q "$RUNNER_TEMP/swiftformat.zip" -d "$RUNNER_TEMP/swiftformat"
+          echo "$RUNNER_TEMP/swiftformat" >> "$GITHUB_PATH"
+
+      - name: Show SwiftFormat version
+        run: swiftformat --version
 
       # SwiftFormat exits with a non-zero code when any file needs formatting,
       # which fails this step and lists every violation in the log.

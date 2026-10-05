@@ -2,9 +2,9 @@
 
 --exclude Tests/XCTestManifests.swift,Tests/BadConfig,Snapshots,Build,PluginTests
 
-# Swift version
+# Swift version (keep in sync with swift-tools-version in Package.swift)
 
---swiftversion 5.10
+--swiftversion 5.9
 
 
 # Format options
@@ -64,4 +64,6 @@
 	conditionalAssignment,			\
 	wrapMultilineConditionalAssignment
 
-# enable conditionalAssignment and wrapMultilineConditionalAssignment when migrating to Xcode 16
+# conditionalAssignment and wrapMultilineConditionalAssignment would rewrite
+# if/else and switch assignments as if/switch expressions (Swift 5.9+).
+# They are a style choice, so they stay disabled until the project opts in.

@@ -397,14 +397,15 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ### Code Formatting
 
-This project uses SwiftFormat to maintain consistent code style.
+This project uses SwiftFormat to maintain consistent code style. Different SwiftFormat versions can format the same code differently, so the project pins one version as the SwiftFormat `rev` in `.pre-commit-config.yaml`. The pre-commit hook and CI both use that version, and `./scripts/swiftformat-version.sh` prints it.
 
 #### Local Development
 
-1. Install SwiftFormat:
+1. Install SwiftFormat, ideally the pinned version (`./scripts/format.sh` warns when yours differs):
    ```bash
    brew install swiftformat
    ```
+   Homebrew installs the latest release. For an exact version, download it from the [SwiftFormat releases](https://github.com/nicklockwood/SwiftFormat/releases) page.
 
 2. Format code locally:
    ```bash

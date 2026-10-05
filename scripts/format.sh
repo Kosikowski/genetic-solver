@@ -59,6 +59,15 @@ if [ ! -f ".swiftformat" ]; then
     exit 1
 fi
 
+# Different SwiftFormat versions can format the same code differently, so
+# warn when the installed version is not the one CI and pre-commit use.
+PINNED_VERSION="$(./scripts/swiftformat-version.sh)"
+INSTALLED_VERSION="$(swiftformat --version)"
+if [ "$INSTALLED_VERSION" != "$PINNED_VERSION" ]; then
+    echo -e "${YELLOW}⚠️  SwiftFormat $INSTALLED_VERSION is installed, but this project uses $PINNED_VERSION${NC}"
+    echo -e "${YELLOW}   Results may differ from CI. The version is pinned in .pre-commit-config.yaml.${NC}"
+fi
+
 echo -e "${YELLOW}🔍 Checking code formatting...${NC}"
 
 if [ "$CHECK_ONLY" = true ]; then
