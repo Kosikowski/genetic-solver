@@ -36,17 +36,31 @@ public extension GeneticSolver {
         }
         var generator = generator
         return { population in
-            let first = tournamentWinner(of: population, size: tournamentSize, using: &generator)
-            let second = tournamentWinner(of: population, size: tournamentSize, using: &generator)
-            return (first, second)
+            tournamentPair(from: population, size: tournamentSize, using: &generator)
         }
     }
+}
+
+/// Returns two parents, each the winner of its own tournament of `size`
+/// individuals drawn from `population`. The first parent's tournament draws
+/// first. Both `tournamentSelection(tournamentSize:using:)` and the default
+/// `GeneticOperators` selection use it.
+func tournamentPair<Element: FitnessEvaluatable>(
+    from population: [Element],
+    size: Int,
+    using generator: inout some RandomNumberGenerator
+)
+    -> (Element, Element)
+{
+    let first = tournamentWinner(of: population, size: size, using: &generator)
+    let second = tournamentWinner(of: population, size: size, using: &generator)
+    return (first, second)
 }
 
 /// Returns the fittest of `size` individuals drawn at random, with
 /// replacement, from `population`; on a tie, the one drawn first. Each drawn
 /// individual has its fitness evaluated once.
-func tournamentWinner<Element: FitnessEvaluatable>(
+private func tournamentWinner<Element: FitnessEvaluatable>(
     of population: [Element],
     size: Int,
     using generator: inout some RandomNumberGenerator

@@ -239,6 +239,26 @@ final class ReproducibilityTests: XCTestCase {
         }
     }
 
+    /// `tournamentSelection` and the default selection share `tournamentPair`,
+    /// so the operator picks exactly what the helper picks from the same
+    /// sequence of random numbers.
+    func testTournamentSelectionPicksWhatTournamentPairPicks() {
+        let population = (0 ..< 30).map { ScoredIndividual(id: $0, score: $0 % 11) }
+
+        for size in [1, 2, 3, 7] {
+            let select = GeneticSolver<ScoredIndividual>.tournamentSelection(
+                tournamentSize: size,
+                using: SeededRandomNumberGenerator(seed: 12)
+            )
+            var generator = SeededRandomNumberGenerator(seed: 12)
+            for _ in 0 ..< 50 {
+                let fromOperator = select(population)
+                let fromHelper = tournamentPair(from: population, size: size, using: &generator)
+                XCTAssertEqual([fromOperator.0.id, fromOperator.1.id], [fromHelper.0.id, fromHelper.1.id], "size \(size)")
+            }
+        }
+    }
+
     func testTournamentSizeOneDrawsUniformly() {
         XCTAssertEqual(weakShare(tournamentSize: 1), 0.5, accuracy: 0.03)
     }

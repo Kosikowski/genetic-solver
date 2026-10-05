@@ -60,9 +60,7 @@ public extension GeneticOperators {
     /// generator, use `GeneticSolver.tournamentSelection(tournamentSize:using:)`.
     static func selectionOperator(population: [Element]) -> (Element, Element) {
         var generator = SystemRandomNumberGenerator()
-        let first = tournamentWinner(of: population, size: 3, using: &generator)
-        let second = tournamentWinner(of: population, size: 3, using: &generator)
-        return (first, second)
+        return tournamentPair(from: population, size: 3, using: &generator)
     }
 
     /// Default crossover operator that returns the parents unchanged (no crossover).
