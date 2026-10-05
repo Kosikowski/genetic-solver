@@ -56,6 +56,9 @@ public extension GeneticOperators {
     /// Each parent is the best of three randomly chosen candidates; on a tie, the candidate
     /// drawn first wins. Each candidate's fitness is evaluated once.
     static func selectionOperator(population: [Element]) -> (Element, Element) {
+        if population.isEmpty {
+            fatalError("selectionOperator needs at least one individual")
+        }
         func selectOne() -> Element {
             let candidates = (0 ..< 3).map { _ -> (element: Element, fitness: Element.Fitness) in
                 let candidate = population.randomElement()!

@@ -8,9 +8,10 @@
 public struct GeneticSolver<Element: GeneticElement & FitnessEvaluatable> {
     // MARK: Properties
 
-    // Parameters
+    // Parameters, checked by `init`, `reset()` and `step()`, which stop the
+    // program with a message when one is out of range
 
-    /// The number of individuals in each generation.
+    /// The number of individuals in each generation. Must be at least 1.
     public var populationSize: Int
 
     /// The probability, from 0 to 1, that `crossoverOperator` is applied to a
@@ -37,7 +38,7 @@ public struct GeneticSolver<Element: GeneticElement & FitnessEvaluatable> {
     public var mutationOperator: MutationOperator<Element>
 
     /// Builds the next population from the current population and the new
-    /// individuals.
+    /// individuals. It must return at least one individual.
     public var replacementOperator: ReplacementOperator<Element>
 
     /// Creates a new individual. Used to fill the population in `init` and
@@ -77,6 +78,9 @@ public struct GeneticSolver<Element: GeneticElement & FitnessEvaluatable> {
     ///
     /// The first population is created right away by calling `newElement`
     /// `populationSize` times, and `terminationCheck` is called once for it.
+    ///
+    /// - Precondition: `populationSize` is at least 1, and `crossoverRate` and
+    ///   `mutationRate` are between 0 and 1.
     public init(
         populationSize: Int,
         crossoverRate: Double = 0.7,
@@ -98,10 +102,47 @@ public struct GeneticSolver<Element: GeneticElement & FitnessEvaluatable> {
         self.terminationCheck = terminationCheck
         self.newElement = newElement
 
+        Self.checkParameters(populationSize: populationSize, crossoverRate: crossoverRate, mutationRate: mutationRate)
+
         let initialPopulation = (0 ..< populationSize).map { _ in newElement() }
         currentPopulation = initialPopulation
         currentGeneration = 0
         isTerminated = terminationCheck(0, initialPopulation)
+    }
+
+    // MARK: Static Functions
+
+    /// Returns a description of the first parameter that is out of range, or
+    /// `nil` when `populationSize` is at least 1 and both rates are between 0
+    /// and 1. NaN and infinite rates are out of range.
+    static func invalidParameterMessage(populationSize: Int, crossoverRate: Double, mutationRate: Double) -> String? {
+        if populationSize < 1 {
+            return "populationSize must be at least 1, but is \(populationSize)"
+        }
+        if !(0 ... 1).contains(crossoverRate) {
+            return "crossoverRate must be between 0 and 1, but is \(crossoverRate)"
+        }
+        if !(0 ... 1).contains(mutationRate) {
+            return "mutationRate must be between 0 and 1, but is \(mutationRate)"
+        }
+        return nil
+    }
+
+    /// Stops the program with a message when a parameter is out of range.
+    /// The parameters are public and settable, so `init`, `reset()` and
+    /// `step()` check them whenever they use them. `fatalError` is used
+    /// rather than `preconditionFailure` because it prints the message in
+    /// optimized builds too.
+    private static func checkParameters(populationSize: Int, crossoverRate: Double, mutationRate: Double) {
+        if
+            let message = invalidParameterMessage(
+                populationSize: populationSize,
+                crossoverRate: crossoverRate,
+                mutationRate: mutationRate
+            )
+        {
+            fatalError(message)
+        }
     }
 
     // MARK: Functions
@@ -124,6 +165,7 @@ public struct GeneticSolver<Element: GeneticElement & FitnessEvaluatable> {
     /// `newElement`, set `currentGeneration` back to 0, and call
     /// `terminationCheck` once for the new population.
     public mutating func reset() {
+        Self.checkParameters(populationSize: populationSize, crossoverRate: crossoverRate, mutationRate: mutationRate)
         currentPopulation = (0 ..< populationSize).map { _ in newElement() }
         currentGeneration = 0
         isTerminated = terminationCheck(currentGeneration, currentPopulation)
@@ -137,6 +179,7 @@ public struct GeneticSolver<Element: GeneticElement & FitnessEvaluatable> {
     @discardableResult
     public mutating func step() -> Bool {
         guard !isTerminated else { return true }
+        Self.checkParameters(populationSize: populationSize, crossoverRate: crossoverRate, mutationRate: mutationRate)
         // Selection & Crossover
         var offspring: [Element] = []
         while offspring.count < populationSize {
@@ -153,6 +196,9 @@ public struct GeneticSolver<Element: GeneticElement & FitnessEvaluatable> {
         }
         // Replacement
         currentPopulation = replacementOperator(currentPopulation, mutated)
+        if currentPopulation.isEmpty {
+            fatalError("replacementOperator returned no individuals")
+        }
         currentGeneration += 1
         isTerminated = terminationCheck(currentGeneration, currentPopulation)
         return isTerminated

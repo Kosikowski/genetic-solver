@@ -362,6 +362,10 @@ let rouletteSelection: SelectionOperator<MyIndividual> = { population in
 - `solve(maxGenerations:)`: Runs generations until terminated or `currentGeneration` reaches `maxGenerations`, and returns the population
 - `reset()`: Starts over with a new population at generation 0
 
+### Parameter Rules
+
+`populationSize` must be at least 1, and `crossoverRate` and `mutationRate` must be between 0 and 1. These are settable properties, so the solver checks them in `init`, `reset()` and `step()`, and stops the program with a message such as `crossoverRate must be between 0 and 1, but is 1.5` when one is out of range. A replacement operator must return at least one individual.
+
 ### Operator Types
 
 - `SelectionOperator<Element>`: `([Element]) -> (Element, Element)`
