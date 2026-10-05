@@ -78,6 +78,13 @@ public struct GeneticSolver<Element: GeneticElement> {
     /// generation once. Assigning a new check calls it once for the current
     /// population, and so does `checkTermination()`.
     ///
+    /// So a check can still be called again for a generation it has seen:
+    /// when a new check wraps the current one (to log it, or to add a
+    /// condition), assigning the wrapper calls the wrapped check again for
+    /// the current population. A check that keeps state should give the same
+    /// answer when called again for the same generation, for example by
+    /// remembering generation numbers rather than counting calls.
+    ///
     /// The check runs after each generation, not before the next one, so a
     /// check that reads something outside the solver, such as a cancel flag
     /// or a deadline, sees a change after the next generation. Call

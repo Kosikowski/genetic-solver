@@ -176,21 +176,19 @@ private enum ReadmeRoulette {
 /// Conditions section.
 private func stallTermination(patience: Int) -> TerminationCheck<MyIndividual> {
     var bestSoFar = -Double.infinity
-    var generationsWithoutImprovement = 0
+    var lastImprovement = 0 // The generation in which the best fitness last improved
     return { generation, population in
         // A new run, for example after `reset()`, starts again at generation 0.
         if generation == 0 {
             bestSoFar = -Double.infinity
-            generationsWithoutImprovement = 0
+            lastImprovement = 0
         }
         let currentBest = population.map { $0.fitness() }.max() ?? -Double.infinity
         if currentBest > bestSoFar {
             bestSoFar = currentBest
-            generationsWithoutImprovement = 0
-        } else {
-            generationsWithoutImprovement += 1
+            lastImprovement = generation
         }
-        return generationsWithoutImprovement >= patience
+        return generation - lastImprovement >= patience
     }
 }
 
@@ -414,13 +412,72 @@ final class ReadmeExamplesTests: XCTestCase {
         _ = solver.solve(maxGenerations: 100)
         XCTAssertTrue(solver.isTerminated)
 
-        // The new population is no better than the old one, so without the
-        // generation-0 reset in the check the count would carry over and the
-        // solver would stay terminated.
+        // The check starts over at generation 0, so the new run also stops
+        // three generations after its start.
         solver.reset()
         XCTAssertFalse(solver.isTerminated)
 
         _ = solver.solve(maxGenerations: 100)
+        XCTAssertEqual(solver.currentGeneration, 3)
+    }
+
+    /// Without the generation-0 reset, a new run would compare itself with
+    /// the previous run's best fitness and last improvement.
+    func testStallTerminationStartsOverAtGenerationZero() {
+        let check = stallTermination(patience: 3)
+        // The first run improves until generation 4.
+        for (generation, best) in [1, 2, 3, 4, 5, 5].enumerated() {
+            _ = check(generation, [MyIndividual(genes: [best])])
+        }
+
+        // The second run starts lower and never improves.
+        let secondRun = (0 ..< 4).map { check($0, [MyIndividual(genes: [1])]) }
+
+        XCTAssertEqual(secondRun, [false, false, false, true])
+    }
+
+    /// Called again for a generation it has already seen, the check gives the
+    /// same answer and doesn't count the generation twice.
+    func testStallTerminationGivesTheSameAnswerWhenCalledAgainForAGeneration() {
+        let once = stallTermination(patience: 3)
+        let twice = stallTermination(patience: 3)
+        let bestFitnessPerGeneration = [5, 5, 6, 6, 6, 6, 6]
+
+        for (generation, best) in bestFitnessPerGeneration.enumerated() {
+            let population = [MyIndividual(genes: [best])]
+            let expected = once(generation, population)
+            XCTAssertEqual(twice(generation, population), expected, "First call, generation \(generation)")
+            XCTAssertEqual(twice(generation, population), expected, "Second call, generation \(generation)")
+        }
+    }
+
+    /// Assigning a check that wraps the current one calls the current one
+    /// again for the current generation, which must not stop the run early.
+    func testStallTerminationWrappedMidRunStillStopsAfterPatienceGenerations() {
+        var solver = makeStallingSolver(terminationCheck: stallTermination(patience: 3))
+        solver.step()
+        var wrapperCalls = 0
+
+        let inner = solver.terminationCheck
+        solver.terminationCheck = { generation, population in
+            wrapperCalls += 1
+            return inner(generation, population)
+        }
+        _ = solver.solve(maxGenerations: 100)
+
+        XCTAssertEqual(solver.currentGeneration, 3)
+        XCTAssertEqual(wrapperCalls, 3, "Generation 1 on assignment, then 2 and 3")
+    }
+
+    func testCheckTerminationMidRunDoesNotShiftTheStallCheck() {
+        var solver = makeStallingSolver(terminationCheck: stallTermination(patience: 3))
+        solver.step()
+        solver.checkTermination()
+        solver.step()
+        solver.checkTermination()
+
+        _ = solver.solve(maxGenerations: 100)
+
         XCTAssertEqual(solver.currentGeneration, 3)
     }
 

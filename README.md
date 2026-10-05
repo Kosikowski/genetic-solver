@@ -269,27 +269,25 @@ The solver calls the termination check exactly once for each population: the one
 
 The check runs after each generation, not before the next one. If it depends on something outside the solver, such as a cancel flag or a deadline, call `solver.checkTermination()` after changing that state to apply the change right away. Otherwise the solver sees it only after the next generation, and once the check has stopped the run, the run stays stopped.
 
-Because each population is checked exactly once, a check can keep its own state. This one stops when the best fitness hasn't improved for a number of generations:
+A check can keep its own state. The solver calls it once for each new population, but it can be called again for a population it has already seen: `checkTermination()` does that, and so does assigning a check, so when a new check wraps the current one (to log it, or to add a condition) the wrapped check sees the current generation twice. A check with state should therefore give the same answer when it is called again for the same generation. This one stops when the best fitness hasn't improved for a number of generations; it remembers the generation of the last improvement instead of counting calls, so repeated calls don't change its answer:
 
 ```swift
 /// Stops when the best fitness hasn't improved for `patience` generations.
 func stallTermination(patience: Int) -> TerminationCheck<MyIndividual> {
     var bestSoFar = -Double.infinity
-    var generationsWithoutImprovement = 0
+    var lastImprovement = 0 // The generation in which the best fitness last improved
     return { generation, population in
         // A new run, for example after `reset()`, starts again at generation 0.
         if generation == 0 {
             bestSoFar = -Double.infinity
-            generationsWithoutImprovement = 0
+            lastImprovement = 0
         }
         let currentBest = population.map { $0.fitness() }.max() ?? -Double.infinity
         if currentBest > bestSoFar {
             bestSoFar = currentBest
-            generationsWithoutImprovement = 0
-        } else {
-            generationsWithoutImprovement += 1
+            lastImprovement = generation
         }
-        return generationsWithoutImprovement >= patience
+        return generation - lastImprovement >= patience
     }
 }
 
