@@ -22,7 +22,8 @@
 public struct SeededRandomNumberGenerator: RandomNumberGenerator, Sendable {
     // MARK: Properties
 
-    private var state: UInt64
+    /// Inlinable code can only use `@usableFromInline` state; see `next()`.
+    @usableFromInline var state: UInt64
 
     // MARK: Lifecycle
 
@@ -33,7 +34,10 @@ public struct SeededRandomNumberGenerator: RandomNumberGenerator, Sendable {
 
     // MARK: Functions
 
+    @inlinable
     public mutating func next() -> UInt64 {
+        // Inlinable, so that a client's code calling it with a known
+        // generator type can inline it instead of calling it for every number.
         state &+= 0x9E37_79B9_7F4A_7C15
         var mixed = state
         mixed = (mixed ^ (mixed >> 30)) &* 0xBF58_476D_1CE4_E5B9

@@ -11,6 +11,9 @@ extension GeneticSolver {
     /// `count` is larger than the population, all of it is returned. A
     /// fitness that isn't equal to itself, such as NaN, ranks below every
     /// other fitness (see `isFitter(_:than:)`).
+    ///
+    /// Inlinable, like `GeneticSolver.step()`, so that clients specialize it.
+    @inlinable
     static func fittest(_ count: Int, of population: [EvaluatedElement<Element>]) -> [EvaluatedElement<Element>] {
         guard count > 0 else { return [] }
         // Indices of the fittest individuals so far, fittest first. Only

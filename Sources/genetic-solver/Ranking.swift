@@ -12,6 +12,9 @@
 /// NaN drawn first wins a tournament. Tournament selection, `bestElement`
 /// and elitism use this rule, so they never prefer a NaN fitness to a real
 /// one. For types without such values, such as integers, it is just `>`.
+///
+/// Inlinable, like `GeneticSolver.step()`, so that clients specialize it.
+@inlinable
 func isFitter<Fitness: Comparable>(_ fitness: Fitness, than other: Fitness) -> Bool {
     // Comparable values are equal to themselves, except NaN-like values.
     let fitnessIsOrdered = fitness == fitness

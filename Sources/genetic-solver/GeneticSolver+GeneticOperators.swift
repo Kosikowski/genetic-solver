@@ -19,6 +19,7 @@ public extension GeneticSolver {
     ///     terminationCheck: MyGeneticOperators.fixedGenerationTermination(maxGenerations: 100)
     /// )
     /// ```
+    @inlinable
     init<Operators: GeneticOperators>(
         populationSize: Int,
         crossoverRate: Double = 0.7,

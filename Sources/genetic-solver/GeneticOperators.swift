@@ -52,33 +52,41 @@ public protocol GeneticOperators {
 }
 
 public extension GeneticOperators {
+    // The defaults are inlinable, like `GeneticSolver.step()`, so that
+    // clients specialize them for their types.
+
     /// Default selection operator implementing tournament selection with a tournament size of 3.
     /// Each parent is the best of three randomly chosen candidates; on a tie, the candidate
     /// drawn first wins.
     ///
     /// It uses the system random number generator. For another tournament size or a seeded
     /// generator, use `GeneticSolver.tournamentSelection(tournamentSize:using:)`.
+    @inlinable
     static func selectionOperator(population: [EvaluatedElement<Element>]) -> (EvaluatedElement<Element>, EvaluatedElement<Element>) {
         var generator = SystemRandomNumberGenerator()
         return tournamentPair(from: population, size: 3, using: &generator)
     }
 
     /// Default crossover operator that returns the parents unchanged (no crossover).
+    @inlinable
     static func crossoverOperator(parent1: Element, parent2: Element) -> [Element] {
         [parent1, parent2]
     }
 
     /// Default mutation operator that returns the element unchanged (no mutation).
+    @inlinable
     static func mutationOperator(element: Element) -> Element {
         element
     }
 
     /// Default replacement operator that completely replaces the old population with the new one.
+    @inlinable
     static func replacementOperator(old _: [EvaluatedElement<Element>], new: [EvaluatedElement<Element>]) -> [EvaluatedElement<Element>] {
         new
     }
 
     /// Default termination condition that stops the algorithm after a fixed maximum number of generations.
+    @inlinable
     static func fixedGenerationTermination(maxGenerations: Int) -> TerminationCheck<Element> {
         { generation, _ in generation >= maxGenerations }
     }

@@ -24,6 +24,7 @@ public extension GeneticSolver {
     /// ```
     ///
     /// - Precondition: `tournamentSize` is at least 1.
+    @inlinable
     static func tournamentSelection(
         tournamentSize: Int = 3,
         using generator: any RandomNumberGenerator = SystemRandomNumberGenerator()
@@ -46,6 +47,9 @@ public extension GeneticSolver {
 /// individuals drawn from `population`. The first parent's tournament draws
 /// first. Both `tournamentSelection(tournamentSize:using:)` and the default
 /// `GeneticOperators` selection use it.
+///
+/// Inlinable, like `GeneticSolver.step()`, so that clients specialize it.
+@inlinable
 func tournamentPair<Element: FitnessEvaluatable>(
     from population: [EvaluatedElement<Element>],
     size: Int,
@@ -61,7 +65,8 @@ func tournamentPair<Element: FitnessEvaluatable>(
 /// Returns the fittest of `size` individuals drawn at random, with
 /// replacement, from `population`; on a tie, the one drawn first. A NaN
 /// fitness ranks below every other fitness (see `isFitter(_:than:)`).
-private func tournamentWinner<Element: FitnessEvaluatable>(
+@inlinable
+func tournamentWinner<Element: FitnessEvaluatable>(
     of population: [EvaluatedElement<Element>],
     size: Int,
     using generator: inout some RandomNumberGenerator

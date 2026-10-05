@@ -6,6 +6,16 @@
 
 // MARK: - GeneticSolver
 
+// The code that runs for every generation or individual (`step()`,
+// `solve(maxGenerations:)`, `bestElement`, elitism, tournaments, ranking,
+// the default operators) is `@inlinable`, so that the compiler specializes
+// it for the client's element type in the client's module. Unspecialized
+// generic code copies and compares individuals through runtime type
+// information, which made the solver several times slower
+// (`scripts/benchmark.sh` measures it). Inlinable code can only use public
+// and `@usableFromInline` declarations, so the state it changes is kept in
+// `@usableFromInline` properties behind read-only public ones.
+
 /// Genetic Solver: highly generic, extensible genetic algorithm framework
 public struct GeneticSolver<Element: GeneticElement> {
     // MARK: Properties
@@ -117,12 +127,27 @@ public struct GeneticSolver<Element: GeneticElement> {
         }
     }
 
+    // State, read through `currentPopulation`, `currentGeneration` and
+    // `isTerminated`, and changed only by the solver
+
+    @usableFromInline var storedPopulation: [EvaluatedElement<Element>]
+
+    @usableFromInline var storedGeneration: Int
+
+    @usableFromInline var storedIsTerminated: Bool
+
+    // MARK: Computed Properties
+
     /// The current population: each individual with its fitness, evaluated
     /// once when the individual was created.
-    public private(set) var currentPopulation: [EvaluatedElement<Element>]
+    @inlinable public var currentPopulation: [EvaluatedElement<Element>] {
+        storedPopulation
+    }
 
     /// The current generation count.
-    public private(set) var currentGeneration: Int
+    @inlinable public var currentGeneration: Int {
+        storedGeneration
+    }
 
     /// The result of the latest call to `terminationCheck`, which is made for
     /// each new population, when the check is replaced, and by
@@ -130,9 +155,9 @@ public struct GeneticSolver<Element: GeneticElement> {
     /// `solve(maxGenerations:)` run no more generations until a later call
     /// returns `false`: after `reset()`, after replacing the check, or after
     /// `checkTermination()` once the state the check depends on has changed.
-    public private(set) var isTerminated: Bool
-
-    // MARK: Computed Properties
+    @inlinable public var isTerminated: Bool {
+        storedIsTerminated
+    }
 
     /// The fittest individual in the current population, with its fitness;
     /// on a tie, the first one. It compares the fitness values the solver
@@ -142,7 +167,7 @@ public struct GeneticSolver<Element: GeneticElement> {
     /// The default replacement operator replaces the whole population, so the
     /// best individual found so far can be lost. With an `eliteCount` of at
     /// least 1, this is always the best individual found so far.
-    public var bestElement: EvaluatedElement<Element> {
+    @inlinable public var bestElement: EvaluatedElement<Element> {
         // The population is never empty: `populationSize` is at least 1 and
         // `step()` stops if a replacement operator returns no individuals.
         currentPopulation.max { isFitter($1.fitness, than: $0.fitness) }!
@@ -191,9 +216,9 @@ public struct GeneticSolver<Element: GeneticElement> {
         ))
 
         let initialPopulation = (0 ..< populationSize).map { _ in EvaluatedElement(newElement()) }
-        currentPopulation = initialPopulation
-        currentGeneration = 0
-        isTerminated = terminationCheck(0, initialPopulation)
+        storedPopulation = initialPopulation
+        storedGeneration = 0
+        storedIsTerminated = terminationCheck(0, initialPopulation)
     }
 
     // MARK: Static Functions
@@ -265,7 +290,7 @@ public struct GeneticSolver<Element: GeneticElement> {
     ///
     /// The result is the same as `currentPopulation`, so it can be ignored, for
     /// example when only `bestElement` is needed.
-    @discardableResult
+    @inlinable @discardableResult
     public mutating func solve(maxGenerations: Int = 1000) -> [EvaluatedElement<Element>] {
         while currentGeneration < maxGenerations, !isTerminated {
             step()
@@ -277,8 +302,8 @@ public struct GeneticSolver<Element: GeneticElement> {
     /// `newElement`, each evaluated once, set `currentGeneration` back to 0,
     /// and call `terminationCheck` once for the new population.
     public mutating func reset() {
-        currentPopulation = (0 ..< populationSize).map { _ in EvaluatedElement(newElement()) }
-        currentGeneration = 0
+        storedPopulation = (0 ..< populationSize).map { _ in EvaluatedElement(newElement()) }
+        storedGeneration = 0
         checkTermination()
     }
 
@@ -290,10 +315,10 @@ public struct GeneticSolver<Element: GeneticElement> {
     /// that has changed since: for example, after setting a cancel flag, so
     /// that the next `step()` runs nothing, or after extending a deadline
     /// that stopped the run, so that `solve(maxGenerations:)` continues.
-    @discardableResult
+    @inlinable @discardableResult
     public mutating func checkTermination() -> Bool {
-        isTerminated = terminationCheck(currentGeneration, currentPopulation)
-        return isTerminated
+        storedIsTerminated = terminationCheck(currentGeneration, currentPopulation)
+        return storedIsTerminated
     }
 
     /// Advance the algorithm by one generation and return `isTerminated`.
@@ -309,7 +334,7 @@ public struct GeneticSolver<Element: GeneticElement> {
     /// mutation. A parent that is copied unchanged (crossover skipped or
     /// returning no children, and no mutation) keeps the fitness it already
     /// has.
-    @discardableResult
+    @inlinable @discardableResult
     public mutating func step() -> Bool {
         guard !isTerminated else { return true }
         // A generator of a concrete type, so that the standard library's random
@@ -344,11 +369,11 @@ public struct GeneticSolver<Element: GeneticElement> {
         // Evaluation: once for each individual that isn't an unchanged copy
         let newIndividuals = elite + mutated.map(\.evaluated)
         // Replacement
-        currentPopulation = replacementOperator(currentPopulation, newIndividuals)
-        if currentPopulation.isEmpty {
+        storedPopulation = replacementOperator(currentPopulation, newIndividuals)
+        if storedPopulation.isEmpty {
             fatalError("replacementOperator returned no individuals")
         }
-        currentGeneration += 1
+        storedGeneration += 1
         return checkTermination()
     }
 }
@@ -359,13 +384,18 @@ extension GeneticSolver {
     /// An individual of the next generation before it is evaluated: either a
     /// parent copied unchanged, whose fitness is known, or a new individual
     /// from crossover or mutation.
-    private enum Offspring {
+    ///
+    /// `@frozen`, so that the inlinable code that switches over it doesn't
+    /// need an `@unknown default` when the library is built with library
+    /// evolution.
+    @frozen @usableFromInline
+    enum Offspring {
         case copy(EvaluatedElement<Element>)
         case new(Element)
 
         // MARK: Computed Properties
 
-        var element: Element {
+        @inlinable var element: Element {
             switch self {
                 case let .copy(parent): parent.element
                 case let .new(element): element
@@ -373,7 +403,7 @@ extension GeneticSolver {
         }
 
         /// The individual with its fitness, evaluating it if it is new.
-        var evaluated: EvaluatedElement<Element> {
+        @inlinable var evaluated: EvaluatedElement<Element> {
             switch self {
                 case let .copy(parent): parent
                 case let .new(element): EvaluatedElement(element)

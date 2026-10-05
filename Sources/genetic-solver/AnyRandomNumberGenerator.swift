@@ -17,20 +17,26 @@
 /// `base` sees exactly the calls it would see if it were passed directly:
 /// the standard library's functions call only `next()`, the protocol's one
 /// requirement, so the same generator state gives the same values.
+///
+/// `@usableFromInline` because inlinable code, such as `GeneticSolver.step()`,
+/// uses it.
+@usableFromInline
 struct AnyRandomNumberGenerator: RandomNumberGenerator {
     // MARK: Properties
 
     /// The generator that produces the numbers.
-    var base: any RandomNumberGenerator
+    @usableFromInline var base: any RandomNumberGenerator
 
     // MARK: Lifecycle
 
+    @usableFromInline
     init(_ base: any RandomNumberGenerator) {
         self.base = base
     }
 
     // MARK: Functions
 
+    @inlinable
     mutating func next() -> UInt64 {
         base.next()
     }
