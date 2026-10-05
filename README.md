@@ -494,6 +494,12 @@ This package uses the Swift 5 language mode, which doesn't enforce `Sendable`. C
 ./scripts/test-swift6-client.sh
 ```
 
+Binary frameworks (XCFrameworks) build a library with library evolution and ship a module interface (`.swiftinterface`) that contains its inlinable code, and library evolution limits what that code may do. CI checks that the library builds that way and that its interface compiles, in the Swift 5 and 6 language modes. To run the check locally (requires Swift 6.0 or later):
+
+```bash
+./scripts/check-library-evolution.sh
+```
+
 To measure how fast the solver runs, build and run the benchmark (`Tests/Benchmark/main.swift`) in release mode. It runs three seeded scenarios, prints the best and median times and the best fitness found, and fails if runs with the same seeds find different results. Compare timings on one machine, and check that a change that should only make the solver faster leaves the best fitness unchanged. CI runs it twice to keep it compiling.
 
 ```bash

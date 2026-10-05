@@ -80,6 +80,21 @@ jobs:
       - name: Build and run a Swift 6 client of this package
         run: ./scripts/test-swift6-client.sh
 
+  # Binary frameworks build the library with library evolution and ship a
+  # module interface that contains its inlinable code. Library evolution
+  # limits what inlinable code may do, so check that the library builds that
+  # way and that its interface compiles.
+  library-evolution:
+    runs-on: ubuntu-latest
+    name: Library Evolution
+    container: swift:6.1.2
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Build with library evolution and check the module interface
+        run: ./scripts/check-library-evolution.sh
+
   # Builds the benchmark (scripts/benchmark.sh) so it keeps compiling, and
   # runs it twice, which checks that seeded runs give the same results. The
   # timings on shared runners vary, so they are only printed.
