@@ -153,6 +153,8 @@ struct MyGeneticOperators: GeneticOperators {
 
 #### Using Individual Operators
 
+Each individual has 10 genes from 0 to 100, so the best possible fitness is 1000. This example stops as soon as any individual reaches 950, or after 200 generations, whichever comes first:
+
 ```swift
 var solver = GeneticSolver<MyIndividual>(
     populationSize: 50,
@@ -162,14 +164,16 @@ var solver = GeneticSolver<MyIndividual>(
     crossoverOperator: crossover,
     mutationOperator: mutation,
     replacementOperator: { _, new in new }, // Generational replacement
-    terminationCheck: { generation, population in
-        generation >= 100 || population.allSatisfy { $0.fitness() > 0.95 }
+    terminationCheck: { _, population in
+        // Stop as soon as any individual reaches the target fitness.
+        population.contains { $0.fitness() >= 950 }
     },
     newElement: {
         MyIndividual(genes: (0..<10).map { _ in Int.random(in: 0...100) })
     }
 )
 
+// Run until the target is reached, or for at most 200 generations.
 let finalPopulation = solver.solve(maxGenerations: 200)
 let bestIndividual = finalPopulation.max { $0.fitness() < $1.fitness() }!
 print("Best fitness: \(bestIndividual.fitness())")
