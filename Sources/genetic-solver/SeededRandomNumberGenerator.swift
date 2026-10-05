@@ -16,7 +16,10 @@
 /// standard library derives from them, such as `Double.random(in:using:)` or
 /// `randomElement(using:)`, also depend on how the standard library converts
 /// them, which a future Swift version could change.
-public struct SeededRandomNumberGenerator: RandomNumberGenerator {
+///
+/// It is `Sendable`: a generator can be kept in a global or static property,
+/// or passed to another task, where the copy continues the same sequence.
+public struct SeededRandomNumberGenerator: RandomNumberGenerator, Sendable {
     // MARK: Properties
 
     private var state: UInt64

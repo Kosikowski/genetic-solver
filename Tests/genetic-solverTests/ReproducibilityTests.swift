@@ -83,6 +83,25 @@ final class ReproducibilityTests: XCTestCase {
         XCTAssertEqual((0 ..< 10).map { _ in original.next() }, (0 ..< 10).map { _ in copy.next() })
     }
 
+    /// The generator is `Sendable`, so Swift 6 code can keep it in a static
+    /// property or send it to another task. This test target is compiled in
+    /// the Swift 5 language mode, which doesn't enforce `Sendable`, so the
+    /// compile-time part only fails with complete concurrency checking.
+    func testSeededGeneratorCanBeSentToAnotherTask() async {
+        func requireSendable(_: (some Sendable).Type) {}
+        requireSendable(SeededRandomNumberGenerator.self)
+
+        var generator = SeededRandomNumberGenerator(seed: 9)
+        _ = generator.next()
+        let sent = generator
+        let fromTask = await Task.detached {
+            var copy = sent
+            return (0 ..< 5).map { _ in copy.next() }
+        }.value
+
+        XCTAssertEqual(fromTask, (0 ..< 5).map { _ in generator.next() }, "The copy continues the same sequence")
+    }
+
     // MARK: The solver's randomNumberGenerator
 
     func testSolverDecisionsUseItsRandomNumberGenerator() {

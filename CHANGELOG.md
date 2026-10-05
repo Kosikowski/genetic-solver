@@ -22,7 +22,7 @@ These changes can affect code written for 0.1.0:
 - `bestElement` returns the fittest individual of the current population.
 - `GeneticSolver.elitistReplacement(eliteCount:)` keeps the fittest individuals from one generation to the next, so the best solution found is never lost.
 - `GeneticSolver.tournamentSelection(tournamentSize:using:)` offers tournament selection with any size and random number generator.
-- `SeededRandomNumberGenerator` and the solver's `randomNumberGenerator` make runs reproducible.
+- `SeededRandomNumberGenerator` and the solver's `randomNumberGenerator` make runs reproducible. The generator is `Sendable`, so Swift 6 code can keep it in a static property or pass it to another task.
 
 ### Changed
 
