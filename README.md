@@ -563,18 +563,20 @@ The hook versions, including the SwiftFormat version CI uses, are pinned in `.pr
 #### CI/CD
 
 - **Format Check**: Every PR is automatically checked for proper formatting
-- **Auto-Format**: Weekly automated formatting PRs are created if needed
+- **Auto-Format**: When started by hand, formats the code and opens a pull request with the changes (see below)
 - **Pre-commit**: Local hooks ensure code is formatted before commits, and CI runs the same hooks (except SwiftFormat, which has its own check) on every file
 - **Pull requests**: A new push to a pull request cancels the CI runs still going for its earlier pushes
 
 #### Auto-Format Pull Requests
+
+The Auto Format workflow runs only when started by hand: Actions → Auto Format → Run workflow, or `gh workflow run "Auto Format" --ref <branch>`. It formats the Swift files in `Sources/` and `Tests/` on that branch with the pinned SwiftFormat version, and if anything changes, it pushes the result to the `auto-format` branch and opens a pull request into the branch it ran on.
 
 GitHub doesn't start other workflows for pull requests opened with the default `GITHUB_TOKEN`, so CI won't check an auto-format pull request on its own. To have CI run on them, give the Auto Format workflow its own token:
 
 1. Create a [fine-grained personal access token](https://github.com/settings/personal-access-tokens/new) with access to this repository only, and the **Contents** and **Pull requests** permissions set to **Read and write**.
 2. Add it as a repository secret named `AUTO_FORMAT_TOKEN` (Settings → Secrets and variables → Actions).
 
-Without that secret, the workflow uses `GITHUB_TOKEN`, which needs **Allow GitHub Actions to create and approve pull requests** turned on (Settings → Actions → General). The pull request then says that its checks must be started by closing and reopening it.
+Without that secret, the workflow uses `GITHUB_TOKEN`, which needs **Allow GitHub Actions to create and approve pull requests** turned on (Settings → Actions → General). The pull request then says that its checks must be started by closing and reopening it. With neither the secret nor the setting, the workflow pushes the `auto-format` branch and then fails at "Create Pull Request" ("GitHub Actions is not permitted to create or approve pull requests"); open the pull request from that branch yourself, and CI runs on it. If a later run updates the branch, close and reopen the pull request to run CI on the new commit, because pushes made with `GITHUB_TOKEN` don't start workflows either.
 
 ## License
 
