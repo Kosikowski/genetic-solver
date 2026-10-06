@@ -59,7 +59,7 @@ targets: [
 ]
 ```
 
-The API described in this README needs version 0.2.0 or later; [CHANGELOG.md](CHANGELOG.md) lists what changed since 0.1.0 and what to update when upgrading. If 0.2.0 hasn't been released yet, depend on the main branch instead: `.package(url: "https://github.com/Kosikowski/genetic-solver.git", branch: "main")`.
+The API described in this README needs version 0.2.0 or later; [CHANGELOG.md](CHANGELOG.md) lists what changed since 0.1.0 and what to update when upgrading.
 
 Or add it to your Xcode project:
 1. File → Add Package Dependencies

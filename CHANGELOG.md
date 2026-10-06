@@ -2,7 +2,7 @@
 
 All notable changes to this package are listed here. Versions follow [semantic versioning](https://semver.org); while the major version is 0, a minor version (0.x.0) can change behaviour.
 
-## Unreleased (planned as 0.2.0)
+## 0.2.0
 
 ### Upgrading from 0.1.0
 
