@@ -36,7 +36,7 @@ This cycle repeats until the termination condition is satisfied, gradually impro
 
 ## Requirements
 
-- Swift 5.9 or later
+- Swift 6.1 or later (on Apple platforms, Xcode 16.3 or later)
 - macOS, iOS, tvOS, watchOS, visionOS, Linux, or Windows
 
 The library uses only the Swift standard library, so it sets no minimum OS versions of its own: it supports every deployment target your Swift toolchain supports, and your package doesn't need to declare `platforms` to use it.
@@ -128,6 +128,8 @@ let mutation: MutationOperator<MyIndividual> = { individual in
     return mutant
 }
 ```
+
+These constants work as written at the top level of `main.swift`, inside a function, or as instance properties. In the Swift 6 language mode they can't be global or static constants elsewhere, because a closure isn't `Sendable`.
 
 #### Option B: Protocol-Based Approach
 
@@ -485,16 +487,16 @@ Run the tests with `swift test`. CI also builds and tests on Linux with the olde
 
 ```bash
 ./scripts/test-linux.sh          # Swift versions from the Linux CI workflow
-./scripts/test-linux.sh 5.9      # A specific version
+./scripts/test-linux.sh 6.1.2    # A specific version
 ```
 
-This package uses the Swift 5 language mode, which doesn't enforce `Sendable`. CI also builds and runs a small client in the Swift 6 language mode (`Tests/Swift6Client/main.swift`) to catch problems that only Swift 6 users would see. To run it locally (requires Swift 6.0 or later):
+The package and its tests use the Swift 6 language mode. The tests import the library with `@testable`, which also gives them its internal declarations, so CI also builds and runs a small client that uses only the public API, as other packages do (`Tests/Swift6Client/main.swift`). To run it locally:
 
 ```bash
 ./scripts/test-swift6-client.sh
 ```
 
-Binary frameworks (XCFrameworks) build a library with library evolution and ship a module interface (`.swiftinterface`) that contains its inlinable code, and library evolution limits what that code may do. CI checks that the library builds that way and that its interface compiles, in the Swift 5 and 6 language modes. To run the check locally (requires Swift 6.0 or later):
+Binary frameworks (XCFrameworks) build a library with library evolution and ship a module interface (`.swiftinterface`) that contains its inlinable code, and library evolution limits what that code may do. CI checks that the library builds that way and that its interface compiles. To run the check locally:
 
 ```bash
 ./scripts/check-library-evolution.sh

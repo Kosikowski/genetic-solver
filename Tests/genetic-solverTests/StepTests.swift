@@ -170,7 +170,7 @@ final class StepTests: XCTestCase {
         for _ in 0 ..< generations {
             solver.step()
             let mutated = solver.currentPopulation.map { $0.element.id == -1 }
-            perGeneration.append(mutated.filter { $0 }.count)
+            perGeneration.append(mutated.filter(\.self).count)
             for (position, isMutated) in mutated.enumerated() where isMutated {
                 perPosition[position] += 1
             }

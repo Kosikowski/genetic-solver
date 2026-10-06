@@ -23,8 +23,8 @@ concurrency:
 
 # The jobs run in the official Swift images, the same ones
 # scripts/test-linux.sh uses locally. That way they don't depend on the
-# Ubuntu version of ubuntu-latest (Swift 5.9 was never released for Ubuntu
-# 24.04 or later) or on a toolchain installer.
+# Ubuntu version of ubuntu-latest or on a toolchain installer. 6.1.2 is the
+# oldest Swift version the package supports (swift-tools-version 6.1).
 jobs:
   build-linux:
     runs-on: ubuntu-latest
@@ -32,7 +32,7 @@ jobs:
     container: swift:${{ matrix.swift-version }}
     strategy:
       matrix:
-        swift-version: ['5.9', '6.1.2']
+        swift-version: ['6.1.2']
 
     steps:
       - uses: actions/checkout@v6
@@ -52,7 +52,7 @@ jobs:
     container: swift:${{ matrix.swift-version }}
     strategy:
       matrix:
-        swift-version: ['5.9', '6.1.2']
+        swift-version: ['6.1.2']
 
     steps:
       - uses: actions/checkout@v6
@@ -66,9 +66,9 @@ jobs:
       - name: Test Release
         run: swift test -c release -v
 
-  # This package and its tests use the Swift 5 language mode, which doesn't
-  # enforce Sendable. A small client in the Swift 6 language mode catches
-  # problems that only Swift 6 users would see.
+  # The tests import the library with @testable, which also gives them its
+  # internal declarations. A small separate client uses only the public API,
+  # as other packages do, in the Swift 6 language mode.
   swift6-client:
     runs-on: ubuntu-latest
     name: Swift 6 Client

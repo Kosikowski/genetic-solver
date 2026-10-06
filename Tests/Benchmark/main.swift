@@ -185,6 +185,15 @@ func runVectors() -> String {
 
 // MARK: - Measuring
 
+/// Prints `message` to standard error, after everything printed so far.
+/// `stdout` and `stderr` are mutable globals in Glibc, which the Swift 6
+/// language mode rejects, so this uses `FileHandle` and `fflush(nil)`, which
+/// flushes every output stream.
+func printError(_ message: String) {
+    fflush(nil)
+    FileHandle.standardError.write(Data((message + "\n").utf8))
+}
+
 /// Runs `run` `repetitions` times and prints the best and median times and
 /// the result. Stops the program if the runs don't all give the same result.
 func measure(_ name: String, repetitions: Int, _ run: () -> String) {
@@ -198,8 +207,7 @@ func measure(_ name: String, repetitions: Int, _ run: () -> String) {
         milliseconds.append(Double(elapsed.seconds) * 1e3 + Double(elapsed.attoseconds) / 1e15)
     }
     guard results.count == 1, let result = results.first else {
-        fflush(stdout)
-        fputs("error: \(name) gave different results in runs with the same seeds: \(results.sorted())\n", stderr)
+        printError("error: \(name) gave different results in runs with the same seeds: \(results.sorted())")
         exit(1)
     }
     milliseconds.sort()
@@ -210,7 +218,7 @@ func measure(_ name: String, repetitions: Int, _ run: () -> String) {
 
 let arguments = CommandLine.arguments.dropFirst()
 guard arguments.count <= 1, let repetitions = Int(arguments.first ?? "5"), repetitions >= 1 else {
-    fputs("Usage: Benchmark [repetitions]\n  repetitions  How often to run each scenario (a positive integer, default 5)\n", stderr)
+    printError("Usage: Benchmark [repetitions]\n  repetitions  How often to run each scenario (a positive integer, default 5)")
     exit(2)
 }
 

@@ -30,12 +30,10 @@ jobs:
       matrix:
         platform: [macOS, iOS, tvOS, watchOS, visionOS]
         # Each Xcode version ships one Swift version, so selecting Xcode
-        # selects the compiler. Keep these in step with the Linux and Windows
-        # workflows: Xcode 15.2 has Swift 5.9.2 and Xcode 16.4 has Swift 6.1.2.
-        xcode: ['15.2', '16.4']
+        # selects the compiler. Xcode 16.4 has Swift 6.1.2, the oldest Swift
+        # version the package supports, as in the Linux and Windows workflows.
+        xcode: ['16.4']
         include:
-          - xcode: '15.2'
-            runner: macos-14
           - xcode: '16.4'
             runner: macos-15
 

@@ -2,10 +2,10 @@
 //  Swift6Client
 //
 //  A client of this package in the Swift 6 language mode, built and run by
-//  scripts/test-swift6-client.sh. The package and its tests use the Swift 5
-//  language mode, which doesn't enforce Sendable, so problems that only
-//  Swift 6 clients see would otherwise go unnoticed: for example a public
-//  value type that isn't Sendable can't be kept in a static property.
+//  scripts/test-swift6-client.sh. The tests import the library with
+//  @testable, which also gives them its internal declarations; this client
+//  uses only the public API, as other packages do. For example, a public
+//  value type that isn't Sendable can't be kept in a static property here.
 
 import genetic_solver
 

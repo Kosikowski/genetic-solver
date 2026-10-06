@@ -2,9 +2,10 @@
 
 # Builds and runs Tests/Swift6Client/main.swift as a separate package in the
 # Swift 6 language mode that depends on this one, with warnings as errors.
-# This package and its tests use the Swift 5 language mode, which doesn't
-# enforce Sendable, so this catches problems that only Swift 6 clients see,
-# such as a public value type that isn't Sendable. Needs Swift 6.0 or later.
+# The tests import the library with @testable, which also gives them its
+# internal declarations; this client uses only the public API, as other
+# packages do, so it catches problems such as a public value type that isn't
+# Sendable or something only reachable through internal access.
 # Usage: ./scripts/test-swift6-client.sh
 
 set -euo pipefail
@@ -26,7 +27,7 @@ ln -s "$repository" "$work/genetic-solver"
 mkdir -p "$work/Swift6Client/Sources/Swift6Client"
 cp Tests/Swift6Client/main.swift "$work/Swift6Client/Sources/Swift6Client/main.swift"
 cat > "$work/Swift6Client/Package.swift" << 'EOF'
-// swift-tools-version: 6.0
+// swift-tools-version: 6.1
 import PackageDescription
 
 let package = Package(

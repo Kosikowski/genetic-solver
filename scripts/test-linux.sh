@@ -9,7 +9,7 @@
 set -euo pipefail
 
 # Keep in sync with the swift-version matrix in .github/workflows/linux.yml.
-DEFAULT_VERSIONS=(5.9 6.1.2)
+DEFAULT_VERSIONS=(6.1.2)
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 

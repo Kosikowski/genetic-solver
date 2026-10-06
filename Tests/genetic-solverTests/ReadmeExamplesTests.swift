@@ -26,6 +26,16 @@ private struct MyIndividual: GeneticElement {
 
 /// The operators and solver from the README's Quick Start, Option A.
 private enum ReadmeQuickStart {
+    // MARK: Nested Types
+
+    /// The operators and termination check the README's Option A declares.
+    struct Operators {
+        let selection: SelectionOperator<MyIndividual>
+        let crossover: CrossoverOperator<MyIndividual>
+        let mutation: MutationOperator<MyIndividual>
+        let terminationCheck: TerminationCheck<MyIndividual>
+    }
+
     // MARK: Static Properties
 
     static let geneRange = 0 ... 100
@@ -34,46 +44,55 @@ private enum ReadmeQuickStart {
     static let populationSize = 50
     static let maxGenerations = 200
 
-    static let selection: SelectionOperator<MyIndividual> = GeneticSolver.tournamentSelection()
-
-    static let crossover: CrossoverOperator<MyIndividual> = { parent1, parent2 in
-        let point = Int.random(in: 0 ..< parent1.genes.count)
-        let child1 = MyIndividual(
-            genes: Array(parent1.genes[..<point]) + Array(parent2.genes[point...])
-        )
-        let child2 = MyIndividual(
-            genes: Array(parent2.genes[..<point]) + Array(parent1.genes[point...])
-        )
-        return [child1, child2]
-    }
-
-    static let mutation: MutationOperator<MyIndividual> = { individual in
-        var mutant = individual
-        let geneIndex = Int.random(in: 0 ..< mutant.genes.count)
-        mutant.genes[geneIndex] = Int.random(in: 0 ... 100)
-        return mutant
-    }
-
-    static let terminationCheck: TerminationCheck<MyIndividual> = { _, population in
-        population.contains { $0.fitness >= 950 }
-    }
-
     // MARK: Static Functions
+
+    /// Runs the README's Option A code and returns its operators. The README
+    /// declares them as constants at the top level of a program; as static
+    /// constants here they would be global, which the Swift 6 language mode
+    /// rejects because a closure isn't `Sendable`.
+    static func makeOperators() -> Operators {
+        let selection: SelectionOperator<MyIndividual> = GeneticSolver.tournamentSelection()
+
+        let crossover: CrossoverOperator<MyIndividual> = { parent1, parent2 in
+            let point = Int.random(in: 0 ..< parent1.genes.count)
+            let child1 = MyIndividual(
+                genes: Array(parent1.genes[..<point]) + Array(parent2.genes[point...])
+            )
+            let child2 = MyIndividual(
+                genes: Array(parent2.genes[..<point]) + Array(parent1.genes[point...])
+            )
+            return [child1, child2]
+        }
+
+        let mutation: MutationOperator<MyIndividual> = { individual in
+            var mutant = individual
+            let geneIndex = Int.random(in: 0 ..< mutant.genes.count)
+            mutant.genes[geneIndex] = Int.random(in: 0 ... 100)
+            return mutant
+        }
+
+        let terminationCheck: TerminationCheck<MyIndividual> = { _, population in
+            population.contains { $0.fitness >= 950 }
+        }
+
+        return Operators(selection: selection, crossover: crossover, mutation: mutation, terminationCheck: terminationCheck)
+    }
 
     static func newElement() -> MyIndividual {
         MyIndividual(genes: (0 ..< 10).map { _ in Int.random(in: 0 ... 100) })
     }
 
     static func makeSolver() -> GeneticSolver<MyIndividual> {
-        GeneticSolver<MyIndividual>(
+        let operators = makeOperators()
+        return GeneticSolver<MyIndividual>(
             populationSize: 50,
             crossoverRate: 0.8,
             mutationRate: 0.1,
-            selectionOperator: selection,
-            crossoverOperator: crossover,
-            mutationOperator: mutation,
+            selectionOperator: operators.selection,
+            crossoverOperator: operators.crossover,
+            mutationOperator: operators.mutation,
             replacementOperator: { _, new in new },
-            terminationCheck: terminationCheck,
+            terminationCheck: operators.terminationCheck,
             newElement: { newElement() }
         )
     }
@@ -120,28 +139,38 @@ private struct MyGeneticOperators: GeneticOperators {
 
 /// The selection operator from the README's Roulette Wheel Selection section.
 private enum ReadmeRoulette {
-    static let rouletteSelection: SelectionOperator<MyIndividual> = { population in
-        precondition(population.allSatisfy { $0.fitness >= 0 && $0.fitness.isFinite }, "Roulette wheel selection needs finite, non-negative fitness")
-        let totalFitness = population.reduce(0) { $0 + $1.fitness }
+    /// Runs the README's code and returns its operator, which the README
+    /// declares as a constant at the top level of a program (see
+    /// `ReadmeQuickStart.makeOperators()`).
+    static func makeRouletteSelection() -> SelectionOperator<MyIndividual> {
+        // The README's declaration, kept as written, so this function returns
+        // the constant instead of the closure itself.
+        // swiftformat:disable redundantVariable
+        let rouletteSelection: SelectionOperator<MyIndividual> = { population in
+            precondition(population.allSatisfy { $0.fitness >= 0 && $0.fitness.isFinite }, "Roulette wheel selection needs finite, non-negative fitness")
+            let totalFitness = population.reduce(0) { $0 + $1.fitness }
 
-        func selectOne() -> EvaluatedElement<MyIndividual> {
-            // With no positive fitness there is no wheel to spin.
-            guard totalFitness > 0 else { return population.randomElement()! }
+            func selectOne() -> EvaluatedElement<MyIndividual> {
+                // With no positive fitness there is no wheel to spin.
+                guard totalFitness > 0 else { return population.randomElement()! }
 
-            let target = Double.random(in: 0 ..< totalFitness)
-            var cumulative = 0.0
-            for individual in population {
-                cumulative += individual.fitness
-                if cumulative > target {
-                    return individual
+                let target = Double.random(in: 0 ..< totalFitness)
+                var cumulative = 0.0
+                for individual in population {
+                    cumulative += individual.fitness
+                    if cumulative > target {
+                        return individual
+                    }
                 }
+                // Not reached: the loop adds the same values in the same order as
+                // totalFitness, so the final sum equals totalFitness > target.
+                return population[population.count - 1]
             }
-            // Not reached: the loop adds the same values in the same order as
-            // totalFitness, so the final sum equals totalFitness > target.
-            return population[population.count - 1]
-        }
 
-        return (selectOne(), selectOne())
+            return (selectOne(), selectOne())
+        }
+        return rouletteSelection
+        // swiftformat:enable redundantVariable
     }
 }
 
@@ -274,9 +303,10 @@ final class ReadmeExamplesTests: XCTestCase {
     /// The README once stopped on a condition every starting population met,
     /// so the solver returned before running a single generation.
     func testQuickStartTerminationIsNotMetByStartingPopulations() {
+        let terminationCheck = ReadmeQuickStart.makeOperators().terminationCheck
         let populationsMeetingTermination = (0 ..< 1000).filter { _ in
             let population = (0 ..< ReadmeQuickStart.populationSize).map { _ in EvaluatedElement(ReadmeQuickStart.newElement()) }
-            return ReadmeQuickStart.terminationCheck(0, population)
+            return terminationCheck(0, population)
         }.count
         XCTAssertEqual(populationsMeetingTermination, 0, "Starting populations should not already meet the termination check")
     }
@@ -304,16 +334,17 @@ final class ReadmeExamplesTests: XCTestCase {
     // MARK: Quick Start operators
 
     func testQuickStartSelectionReturnsMembersOfThePopulation() {
+        let selection = ReadmeQuickStart.makeOperators().selection
         let population = (0 ..< 20).map { EvaluatedElement(MyIndividual(genes: [$0])) }
         for _ in 0 ..< 1000 {
-            let (first, second) = ReadmeQuickStart.selection(population)
+            let (first, second) = selection(population)
             XCTAssertTrue(population.contains { $0.element.genes == first.element.genes })
             XCTAssertTrue(population.contains { $0.element.genes == second.element.genes })
         }
     }
 
     func testQuickStartSelectionWithSingleIndividualReturnsItTwice() {
-        let (first, second) = ReadmeQuickStart.selection([EvaluatedElement(MyIndividual(genes: [7]))])
+        let (first, second) = ReadmeQuickStart.makeOperators().selection([EvaluatedElement(MyIndividual(genes: [7]))])
         XCTAssertEqual(first.element.genes, [7])
         XCTAssertEqual(second.element.genes, [7])
     }
@@ -321,8 +352,9 @@ final class ReadmeExamplesTests: XCTestCase {
     func testQuickStartCrossoverTakesEachGeneFromOneOfTheParents() {
         let parent1 = MyIndividual(genes: Array(0 ..< 10))
         let parent2 = MyIndividual(genes: Array(100 ..< 110))
+        let crossover = ReadmeQuickStart.makeOperators().crossover
         for _ in 0 ..< 1000 {
-            let children = ReadmeQuickStart.crossover(parent1, parent2)
+            let children = crossover(parent1, parent2)
             XCTAssertEqual(children.count, 2)
             XCTAssertTrue(children.allSatisfy { $0.genes.count == parent1.genes.count })
             // The two children are complementary: at every position one holds
@@ -337,14 +369,15 @@ final class ReadmeExamplesTests: XCTestCase {
     func testQuickStartCrossoverWithSingleGeneSwapsTheParents() {
         // With one gene the only crossover point is 0, so each child is a copy
         // of the other parent.
-        let children = ReadmeQuickStart.crossover(MyIndividual(genes: [1]), MyIndividual(genes: [2]))
+        let children = ReadmeQuickStart.makeOperators().crossover(MyIndividual(genes: [1]), MyIndividual(genes: [2]))
         XCTAssertEqual(children.map(\.genes), [[2], [1]])
     }
 
     func testQuickStartMutationChangesAtMostOneGeneWithinRange() {
         let original = MyIndividual(genes: Array(repeating: 50, count: 10))
+        let mutation = ReadmeQuickStart.makeOperators().mutation
         for _ in 0 ..< 1000 {
-            let mutant = ReadmeQuickStart.mutation(original)
+            let mutant = mutation(original)
             XCTAssertEqual(mutant.genes.count, original.genes.count)
             let changed = zip(mutant.genes, original.genes).filter { $0 != $1 }
             XCTAssertLessThanOrEqual(changed.count, 1)
@@ -522,11 +555,12 @@ final class ReadmeExamplesTests: XCTestCase {
     /// The README version crashed here: with a total fitness of 0,
     /// `Double.random(in: 0 ..< 0)` traps.
     func testRouletteWithAllZeroFitnessPicksAtRandom() {
+        let rouletteSelection = ReadmeRoulette.makeRouletteSelection()
         let population = [MyIndividual(genes: [0]), MyIndividual(genes: [0, 0]), MyIndividual(genes: [0, 0, 0])].map(EvaluatedElement.init)
 
         var pickedGeneCounts = Set<Int>()
         for _ in 0 ..< 1000 {
-            let (first, second) = ReadmeRoulette.rouletteSelection(population)
+            let (first, second) = rouletteSelection(population)
             pickedGeneCounts.insert(first.element.genes.count)
             pickedGeneCounts.insert(second.element.genes.count)
         }
@@ -535,22 +569,24 @@ final class ReadmeExamplesTests: XCTestCase {
     }
 
     func testRouletteNeverPicksZeroFitnessWhenAnotherIndividualIsPositive() {
+        let rouletteSelection = ReadmeRoulette.makeRouletteSelection()
         let population = [MyIndividual(genes: [0]), MyIndividual(genes: [5]), MyIndividual(genes: [0, 0])].map(EvaluatedElement.init)
 
         for _ in 0 ..< 1000 {
-            let (first, second) = ReadmeRoulette.rouletteSelection(population)
+            let (first, second) = rouletteSelection(population)
             XCTAssertEqual(first.element.genes, [5])
             XCTAssertEqual(second.element.genes, [5])
         }
     }
 
     func testRoulettePicksInProportionToFitness() {
+        let rouletteSelection = ReadmeRoulette.makeRouletteSelection()
         let population = [MyIndividual(genes: [1]), MyIndividual(genes: [3])].map(EvaluatedElement.init)
         let picks = 10000
 
         var strongPicks = 0
         for _ in 0 ..< picks / 2 {
-            let (first, second) = ReadmeRoulette.rouletteSelection(population)
+            let (first, second) = rouletteSelection(population)
             strongPicks += [first, second].filter { $0.element.genes == [3] }.count
         }
 
@@ -562,7 +598,7 @@ final class ReadmeExamplesTests: XCTestCase {
     }
 
     func testRouletteWithSingleIndividualReturnsItTwice() {
-        let (first, second) = ReadmeRoulette.rouletteSelection([EvaluatedElement(MyIndividual(genes: [4]))])
+        let (first, second) = ReadmeRoulette.makeRouletteSelection()([EvaluatedElement(MyIndividual(genes: [4]))])
 
         XCTAssertEqual(first.element.genes, [4])
         XCTAssertEqual(second.element.genes, [4])
@@ -572,13 +608,14 @@ final class ReadmeExamplesTests: XCTestCase {
     /// fitness 0, like a knapsack population where every selection is
     /// overweight, must not crash the solver.
     func testRouletteRunsInTheSolverWithAZeroFitnessStartingPopulation() {
+        let operators = ReadmeQuickStart.makeOperators()
         var solver = GeneticSolver<MyIndividual>(
             populationSize: 20,
             crossoverRate: 0.8,
             mutationRate: 0.5,
-            selectionOperator: ReadmeRoulette.rouletteSelection,
-            crossoverOperator: ReadmeQuickStart.crossover,
-            mutationOperator: ReadmeQuickStart.mutation,
+            selectionOperator: ReadmeRoulette.makeRouletteSelection(),
+            crossoverOperator: operators.crossover,
+            mutationOperator: operators.mutation,
             replacementOperator: { _, new in new },
             terminationCheck: { _, _ in false },
             newElement: { MyIndividual(genes: Array(repeating: 0, count: 10)) }
@@ -593,14 +630,15 @@ final class ReadmeExamplesTests: XCTestCase {
     // MARK: Elitism
 
     func testElitismExampleKeepsTheBestAndReachesTheTarget() {
+        let operators = ReadmeQuickStart.makeOperators()
         var solver = GeneticSolver<MyIndividual>(
             populationSize: 50,
             crossoverRate: 0.8,
             mutationRate: 0.1,
             eliteCount: 2, // Keep the 2 fittest
-            selectionOperator: ReadmeQuickStart.selection,
-            crossoverOperator: ReadmeQuickStart.crossover,
-            mutationOperator: ReadmeQuickStart.mutation,
+            selectionOperator: operators.selection,
+            crossoverOperator: operators.crossover,
+            mutationOperator: operators.mutation,
             replacementOperator: { _, new in new },
             terminationCheck: { _, population in population.contains { $0.fitness >= 950 } },
             newElement: { MyIndividual(genes: (0 ..< 10).map { _ in Int.random(in: 0 ... 100) }) }

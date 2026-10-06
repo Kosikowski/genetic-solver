@@ -67,13 +67,12 @@ final class ReproducibilityTests: XCTestCase {
     }
 
     /// The generator is `Sendable`, so Swift 6 code can keep it in a static
-    /// property or send it to another task. This test target is compiled in
-    /// the Swift 5 language mode, which doesn't enforce `Sendable`, so the
-    /// compile-time part only fails with complete concurrency checking.
+    /// property or send it to another task. The tests use the Swift 6
+    /// language mode, so without the conformance this test doesn't compile.
     ///
-    /// The package sets no minimum OS versions, so older Xcode versions build
-    /// the tests for OS versions that predate Swift concurrency; the
-    /// availability attribute keeps `Task` within the versions that have it.
+    /// The package sets no minimum OS versions, so the tests can be built for
+    /// deployment targets that predate Swift concurrency; the availability
+    /// attribute keeps `Task` within the versions that have it.
     @available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
     func testSeededGeneratorCanBeSentToAnotherTask() async {
         func requireSendable(_: (some Sendable).Type) {}

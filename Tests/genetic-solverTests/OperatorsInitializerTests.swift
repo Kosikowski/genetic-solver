@@ -14,8 +14,11 @@ import XCTest
 private enum RecordingOperators: GeneticOperators {
     // MARK: Static Properties
 
-    static var calls: [String] = []
-    static var nextID = 0
+    // `GeneticOperators` requirements are static, so what they record has to
+    // be static too. XCTest runs the tests in a process one at a time, so
+    // these test-only properties are never accessed concurrently.
+    nonisolated(unsafe) static var calls: [String] = []
+    nonisolated(unsafe) static var nextID = 0
 
     // MARK: Static Functions
 
@@ -66,7 +69,8 @@ private enum RecordingOperators: GeneticOperators {
 private enum NewElementOnlyOperators: GeneticOperators {
     // MARK: Static Properties
 
-    static var nextID = 0
+    /// Static for the same reason as `RecordingOperators`' properties.
+    nonisolated(unsafe) static var nextID = 0
 
     // MARK: Static Functions
 
@@ -85,7 +89,8 @@ private enum NewElementOnlyOperators: GeneticOperators {
 private enum Version010Operators: GeneticOperators {
     // MARK: Static Properties
 
-    static var oldMethodCalls = 0
+    /// Static for the same reason as `RecordingOperators`' properties.
+    nonisolated(unsafe) static var oldMethodCalls = 0
 
     // MARK: Static Functions
 
