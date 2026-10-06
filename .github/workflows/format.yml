@@ -18,7 +18,7 @@ jobs:
     name: Auto Format Code
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       # Install the SwiftFormat version pinned in .pre-commit-config.yaml so CI
       # formats code exactly like the local pre-commit hook.
