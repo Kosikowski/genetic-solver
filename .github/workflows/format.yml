@@ -1,12 +1,13 @@
 # .github/workflows/format.yml
-# Auto-format code and create PRs for formatting fixes
+# Formats the code with SwiftFormat and opens a pull request with the changes.
 
 name: Auto Format
 
+# Started by hand only (Actions → Auto Format → Run workflow). The SwiftFormat
+# workflow already checks every pull request and push to main; this workflow
+# fixes what that check finds.
 on:
-  workflow_dispatch:  # Manual trigger
-  schedule:
-    - cron: '0 0 * * 0'  # Weekly on Sundays
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -50,7 +51,11 @@ jobs:
       # workflows, so CI wouldn't check them. When the repository has an
       # AUTO_FORMAT_TOKEN secret (see "Auto-Format Pull Requests" in the
       # README), the pull request is opened with it and CI runs as usual;
-      # otherwise its description says how to start the checks.
+      # otherwise its description says how to start the checks. GITHUB_TOKEN
+      # can open it only when the repository allows GitHub Actions to create
+      # pull requests. If it can't, "Create Pull Request" fails after pushing
+      # the auto-format branch, and the pull request can be opened from that
+      # branch by hand.
       - name: Write pull request description
         if: steps.check-formatting.outputs.needs-formatting == 'true'
         env:
