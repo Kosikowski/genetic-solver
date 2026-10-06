@@ -17,7 +17,7 @@ jobs:
     name: Check Tag
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Check that the tag is v<semantic version>
         env:
@@ -45,7 +45,7 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       # release-notes.sh rejects tags that aren't v<semantic version> and
       # writes an installation snippet without the "v", which SwiftPM needs.

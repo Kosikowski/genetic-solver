@@ -35,7 +35,7 @@ jobs:
         swift-version: ['6.1.2']
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Show Swift version
         run: swift --version
@@ -55,7 +55,7 @@ jobs:
         swift-version: ['6.1.2']
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Show Swift version
         run: swift --version
@@ -75,7 +75,7 @@ jobs:
     container: swift:6.1.2
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Build and run a Swift 6 client of this package
         run: ./scripts/test-swift6-client.sh
@@ -90,7 +90,7 @@ jobs:
     container: swift:6.1.2
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Build with library evolution and check the module interface
         run: ./scripts/check-library-evolution.sh
@@ -104,7 +104,7 @@ jobs:
     container: swift:6.1.2
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Build and run the benchmark
         run: ./scripts/benchmark.sh 2
