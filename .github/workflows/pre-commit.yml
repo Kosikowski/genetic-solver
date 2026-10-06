@@ -1,0 +1,49 @@
+# .github/workflows/pre-commit.yml
+# Runs the repository's pre-commit hooks on every file, so their rules hold
+# even for changes made without the hooks installed locally.
+
+name: Pre-commit
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+# A new push to a pull request cancels the runs for its earlier pushes.
+# Other runs (pushes to main, tags, calls from the Release workflow) each get
+# a group of their own, so they are never cancelled or held back.
+concurrency:
+  group: pre-commit-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  pre-commit:
+    name: Pre-commit Hooks
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+
+      - name: Install pre-commit
+        run: pip install pre-commit==4.6.2
+
+      - name: Cache hook environments
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
+
+      # SwiftFormat is checked by the SwiftFormat workflow, which installs the
+      # pinned release instead of building it from source.
+      - name: Run the hooks on all files
+        env:
+          SKIP: swiftformat
+        run: pre-commit run --all-files --show-diff-on-failure

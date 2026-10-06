@@ -1,5 +1,5 @@
 //  GeneticOperators.swift
-//  RubicCubeTests
+//  genetic-solver
 //
 //  Created by Mateusz Kosikowski on 05/02/2024.
 //
@@ -11,14 +11,16 @@
 // MARK: - GeneticOperators
 
 /// Protocol defining the core genetic algorithm operations required to evolve a population.
-/// The associated type `Element` must conform to `FitnessEvaluatable` to allow fitness-based operations.
+/// The associated type `Element` has the same requirements as `GeneticSolver`'s element,
+/// so a conforming type can be passed to
+/// `GeneticSolver(populationSize:crossoverRate:mutationRate:eliteCount:operators:terminationCheck:)`.
 public protocol GeneticOperators {
-    associatedtype Element: FitnessEvaluatable
+    associatedtype Element: GeneticElement
 
     /// Selects two individuals from the population for reproduction.
-    /// - Parameter population: The current population array.
-    /// - Returns: A tuple containing two selected elements.
-    static func selectionOperator(population: [Element]) -> (Element, Element)
+    /// - Parameter population: The current population, with each individual's fitness.
+    /// - Returns: Two members of the population.
+    static func selectionOperator(population: [EvaluatedElement<Element>]) -> (EvaluatedElement<Element>, EvaluatedElement<Element>)
 
     /// Performs crossover on two parent elements to produce offspring.
     /// - Parameters:
@@ -34,10 +36,10 @@ public protocol GeneticOperators {
 
     /// Replaces elements in the population with new elements.
     /// - Parameters:
-    ///   - old: The current population elements to be replaced.
-    ///   - new: The new elements to insert.
+    ///   - old: The current population, with each individual's fitness.
+    ///   - new: The new individuals, with each one's fitness.
     /// - Returns: The resulting population after replacement.
-    static func replacementOperator(old: [Element], new: [Element]) -> [Element]
+    static func replacementOperator(old: [EvaluatedElement<Element>], new: [EvaluatedElement<Element>]) -> [EvaluatedElement<Element>]
 
     /// Provides a termination condition based on a fixed number of generations.
     /// - Parameter maxGenerations: The maximum number of generations allowed.
@@ -50,32 +52,41 @@ public protocol GeneticOperators {
 }
 
 public extension GeneticOperators {
+    // The defaults are inlinable, like `GeneticSolver.step()`, so that
+    // clients specialize them for their types.
+
     /// Default selection operator implementing tournament selection with a tournament size of 3.
-    /// Selects the best individual out of three randomly chosen candidates.
-    static func selectionOperator(population: [Element]) -> (Element, Element) {
-        func selectOne() -> Element {
-            let candidates = (0 ..< 3).map { _ in population.randomElement()! }
-            return candidates.max { $0.fitness() < $1.fitness() }!
-        }
-        return (selectOne(), selectOne())
+    /// Each parent is the best of three randomly chosen candidates; on a tie, the candidate
+    /// drawn first wins.
+    ///
+    /// It uses the system random number generator. For another tournament size or a seeded
+    /// generator, use `GeneticSolver.tournamentSelection(tournamentSize:using:)`.
+    @inlinable
+    static func selectionOperator(population: [EvaluatedElement<Element>]) -> (EvaluatedElement<Element>, EvaluatedElement<Element>) {
+        var generator = SystemRandomNumberGenerator()
+        return tournamentPair(from: population, size: 3, using: &generator)
     }
 
     /// Default crossover operator that returns the parents unchanged (no crossover).
+    @inlinable
     static func crossoverOperator(parent1: Element, parent2: Element) -> [Element] {
         [parent1, parent2]
     }
 
     /// Default mutation operator that returns the element unchanged (no mutation).
+    @inlinable
     static func mutationOperator(element: Element) -> Element {
         element
     }
 
     /// Default replacement operator that completely replaces the old population with the new one.
-    static func replacementOperator(old _: [Element], new: [Element]) -> [Element] {
+    @inlinable
+    static func replacementOperator(old _: [EvaluatedElement<Element>], new: [EvaluatedElement<Element>]) -> [EvaluatedElement<Element>] {
         new
     }
 
     /// Default termination condition that stops the algorithm after a fixed maximum number of generations.
+    @inlinable
     static func fixedGenerationTermination(maxGenerations: Int) -> TerminationCheck<Element> {
         { generation, _ in generation >= maxGenerations }
     }

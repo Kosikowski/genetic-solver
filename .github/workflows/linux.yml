@@ -8,25 +8,34 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+  # Lets the Release workflow run these tests before publishing.
+  workflow_call:
 
 permissions:
   contents: read
 
+# A new push to a pull request cancels the runs for its earlier pushes.
+# Other runs (pushes to main, tags, calls from the Release workflow) each get
+# a group of their own, so they are never cancelled or held back.
+concurrency:
+  group: linux-ci-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: true
+
+# The jobs run in the official Swift images, the same ones
+# scripts/test-linux.sh uses locally. That way they don't depend on the
+# Ubuntu version of ubuntu-latest or on a toolchain installer. 6.1.2 is the
+# oldest Swift version the package supports (swift-tools-version 6.1).
 jobs:
   build-linux:
     runs-on: ubuntu-latest
     name: Build and Test (Linux)
+    container: swift:${{ matrix.swift-version }}
     strategy:
       matrix:
-        swift-version: [5.9, 6.1.2]
+        swift-version: ['6.1.2']
 
     steps:
       - uses: actions/checkout@v6
-
-      - name: Install Swift
-        uses: SwiftyLab/setup-swift@v1
-        with:
-          swift-version: ${{ matrix.swift-version }}
 
       - name: Show Swift version
         run: swift --version
@@ -40,17 +49,13 @@ jobs:
   build-linux-release:
     runs-on: ubuntu-latest
     name: Build and Test (Linux Release)
+    container: swift:${{ matrix.swift-version }}
     strategy:
       matrix:
-        swift-version: [5.9, 6.1.2]
+        swift-version: ['6.1.2']
 
     steps:
       - uses: actions/checkout@v6
-
-      - name: Install Swift
-        uses: SwiftyLab/setup-swift@v1
-        with:
-          swift-version: ${{ matrix.swift-version }}
 
       - name: Show Swift version
         run: swift --version
@@ -60,3 +65,46 @@ jobs:
 
       - name: Test Release
         run: swift test -c release -v
+
+  # The tests import the library with @testable, which also gives them its
+  # internal declarations. A small separate client uses only the public API,
+  # as other packages do, in the Swift 6 language mode.
+  swift6-client:
+    runs-on: ubuntu-latest
+    name: Swift 6 Client
+    container: swift:6.1.2
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Build and run a Swift 6 client of this package
+        run: ./scripts/test-swift6-client.sh
+
+  # Binary frameworks build the library with library evolution and ship a
+  # module interface that contains its inlinable code. Library evolution
+  # limits what inlinable code may do, so check that the library builds that
+  # way and that its interface compiles.
+  library-evolution:
+    runs-on: ubuntu-latest
+    name: Library Evolution
+    container: swift:6.1.2
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Build with library evolution and check the module interface
+        run: ./scripts/check-library-evolution.sh
+
+  # Builds the benchmark (scripts/benchmark.sh) so it keeps compiling, and
+  # runs it twice, which checks that seeded runs give the same results. The
+  # timings on shared runners vary, so they are only printed.
+  benchmark:
+    runs-on: ubuntu-latest
+    name: Benchmark
+    container: swift:6.1.2
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Build and run the benchmark
+        run: ./scripts/benchmark.sh 2

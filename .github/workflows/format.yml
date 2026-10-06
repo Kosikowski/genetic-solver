@@ -14,61 +14,67 @@ permissions:
 
 jobs:
   format:
-    runs-on: macos-14
+    runs-on: ubuntu-latest
     name: Auto Format Code
 
     steps:
       - uses: actions/checkout@v6
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 0
 
-      - name: Setup Xcode
-        uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: '16'
-
-      - name: Install Swift
-        uses: SwiftyLab/setup-swift@v1
-        with:
-          swift-version: "6.1.2"
-
-      - name: Clean build directory
-        run: rm -rf .build
-
+      # Install the SwiftFormat version pinned in .pre-commit-config.yaml so CI
+      # formats code exactly like the local pre-commit hook.
       - name: Install SwiftFormat
         run: |
-          brew install swiftformat
+          ./scripts/install-swiftformat.sh "$RUNNER_TEMP/swiftformat"
+          echo "$RUNNER_TEMP/swiftformat" >> "$GITHUB_PATH"
 
       - name: Check current formatting
         id: check-formatting
+        # The script runs SwiftFormat one file at a time (with all files at
+        # once, it hits its time limit on these runners). It exits with 0 when
+        # everything is formatted, 1 when some files need formatting, and
+        # another non-zero code when SwiftFormat failed.
         run: |
-          if swiftformat --lint --config .swiftformat Sources/ Tests/ | grep -q "would have been formatted"; then
-            echo "needs-formatting=true" >> $GITHUB_OUTPUT
-          else
-            echo "needs-formatting=false" >> $GITHUB_OUTPUT
-          fi
+          status=0
+          ./scripts/swiftformat-each.sh --lint || status=$?
+          case $status in
+            0) echo "needs-formatting=false" >> "$GITHUB_OUTPUT" ;;
+            1) echo "needs-formatting=true" >> "$GITHUB_OUTPUT" ;;
+            *) echo "SwiftFormat failed with exit code $status"; exit "$status" ;;
+          esac
 
       - name: Format code
         if: steps.check-formatting.outputs.needs-formatting == 'true'
+        run: ./scripts/swiftformat-each.sh
+
+      # Pull requests opened with the default GITHUB_TOKEN don't start other
+      # workflows, so CI wouldn't check them. When the repository has an
+      # AUTO_FORMAT_TOKEN secret (see "Auto-Format Pull Requests" in the
+      # README), the pull request is opened with it and CI runs as usual;
+      # otherwise its description says how to start the checks.
+      - name: Write pull request description
+        if: steps.check-formatting.outputs.needs-formatting == 'true'
+        env:
+          HAS_AUTO_FORMAT_TOKEN: ${{ secrets.AUTO_FORMAT_TOKEN != '' }}
         run: |
-          swiftformat --config .swiftformat Sources/ Tests/
+          cat > "$RUNNER_TEMP/pull-request-body.md" <<'EOF'
+          This pull request formats the Swift files in `Sources/` and `Tests/` with SwiftFormat, using the rules in `.swiftformat` and the SwiftFormat version pinned in `.pre-commit-config.yaml`.
+          EOF
+          if [ "$HAS_AUTO_FORMAT_TOKEN" != true ]; then
+            cat >> "$RUNNER_TEMP/pull-request-body.md" <<'EOF'
+
+          > [!NOTE]
+          > This pull request was opened with the default `GITHUB_TOKEN`, so CI checks don't start automatically. Close and reopen it to run them, or add an `AUTO_FORMAT_TOKEN` secret as described in the README.
+          EOF
+          fi
 
       - name: Create Pull Request
         if: steps.check-formatting.outputs.needs-formatting == 'true'
-        uses: peter-evans/create-pull-request@v8
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.AUTO_FORMAT_TOKEN || secrets.GITHUB_TOKEN }}
           commit-message: "style: auto-format code with SwiftFormat"
           title: "style: auto-format code with SwiftFormat"
-          body: |
-            This PR automatically formats the code using SwiftFormat.
-
-            Changes made:
-            - Applied SwiftFormat rules from `.swiftformat` configuration
-            - Formatted all Swift files in `Sources/` and `Tests/` directories
-
-            This is an automated formatting PR to maintain code style consistency.
+          body-path: ${{ runner.temp }}/pull-request-body.md
           branch: auto-format
           delete-branch: true
           labels: |

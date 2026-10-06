@@ -2,16 +2,19 @@
 
 --exclude Tests/XCTestManifests.swift,Tests/BadConfig,Snapshots,Build,PluginTests
 
-# Swift version
+# Swift version (keep in sync with swift-tools-version in Package.swift)
 
---swiftversion 5.10
+--swiftversion 6.1
 
 
 # Format options
 
 --allman false
 --binarygrouping 4,8
---commas always
+# Trailing commas in collection literals only. Swift 6.1 also allows them in
+# parameter and argument lists, where "always" would add them too; the code
+# and the README examples don't use them there.
+--trailing-commas collections-only
 --elseposition same-line
 --voidtype void
 --exponentcase lowercase
@@ -64,4 +67,6 @@
 	conditionalAssignment,			\
 	wrapMultilineConditionalAssignment
 
-# enable conditionalAssignment and wrapMultilineConditionalAssignment when migrating to Xcode 16
+# conditionalAssignment and wrapMultilineConditionalAssignment would rewrite
+# if/else and switch assignments as if/switch expressions (Swift 5.9+).
+# They are a style choice, so they stay disabled until the project opts in.

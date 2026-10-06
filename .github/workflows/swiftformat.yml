@@ -12,46 +12,31 @@ on:
 permissions:
   contents: read
 
+# A new push to a pull request cancels the runs for its earlier pushes.
+# Other runs (pushes to main, tags, calls from the Release workflow) each get
+# a group of their own, so they are never cancelled or held back.
+concurrency:
+  group: swiftformat-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   swiftformat:
-    runs-on: macos-14
+    runs-on: ubuntu-latest
     name: SwiftFormat Check
 
     steps:
       - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0  # Required for SwiftFormat to work properly
 
-      - name: Setup Xcode
-        uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: '16'
-
-      - name: Install Swift
-        uses: SwiftyLab/setup-swift@v1
-        with:
-          swift-version: "6.1.2"
-
-      - name: Clean build directory
-        run: rm -rf .build
-
+      # Install the SwiftFormat version pinned in .pre-commit-config.yaml so CI
+      # formats code exactly like the local pre-commit hook.
       - name: Install SwiftFormat
         run: |
-          brew install swiftformat
+          ./scripts/install-swiftformat.sh "$RUNNER_TEMP/swiftformat"
+          echo "$RUNNER_TEMP/swiftformat" >> "$GITHUB_PATH"
 
+      # The script exits with a non-zero code when any file needs formatting,
+      # which fails this step and lists every violation in the log. It checks
+      # one file at a time: with all files at once, SwiftFormat's Linux build
+      # on these runners hits its time limit ("rule timed out").
       - name: Check SwiftFormat
-        run: |
-          swiftformat --lint --config .swiftformat Sources/ Tests/
-
-      - name: Check if formatting is needed
-        id: check-formatting
-        run: |
-          if swiftformat --lint --config .swiftformat Sources/ Tests/ | grep -q "would have been formatted"; then
-            echo "needs-formatting=true" >> $GITHUB_OUTPUT
-            echo "❌ Code formatting issues found"
-            swiftformat --lint --config .swiftformat Sources/ Tests/
-            exit 1
-          else
-            echo "needs-formatting=false" >> $GITHUB_OUTPUT
-            echo "✅ Code formatting is correct"
-          fi
+        run: ./scripts/swiftformat-each.sh --lint

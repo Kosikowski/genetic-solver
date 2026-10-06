@@ -24,40 +24,66 @@ This cycle repeats until the termination condition is satisfied, gradually impro
 
 ## Features
 
-- **Generic Design**: Works with any type that conforms to `GeneticElement` and `FitnessEvaluatable`
+- **Generic Design**: Works with any type that conforms to `GeneticElement`
 - **Customizable Operators**: Full control over selection, crossover, mutation, and replacement strategies
 - **Protocol-Based Design**: Uses `GeneticOperators` protocol for clean separation of concerns
-- **Default Implementations**: Built-in operators for common genetic algorithm patterns
+- **Default Implementations**: Built-in tournament selection and elitism, and a default for every operator
+- **Fitness Evaluated Once**: The solver evaluates each individual's fitness once and passes it to the operators along with the individual
 - **Type Safety**: Leverages Swift's type system for compile-time safety
 - **Extensible**: Easy to extend with custom operators and termination conditions
 - **State Tracking**: Monitor current population and generation during execution
-- **Incremental Execution**: Step-by-step execution with the `step()` method
+- **Incremental Execution**: Step-by-step execution with the `step()` method, continuing runs, and `reset()` to start over
+
+## Requirements
+
+- Swift 6.1 or later (on Apple platforms, Xcode 16.3 or later)
+- macOS, iOS, tvOS, watchOS, visionOS, Linux, or Windows
+
+The library uses only the Swift standard library, so it sets no minimum OS versions of its own: it supports every deployment target your Swift toolchain supports, and your package doesn't need to declare `platforms` to use it.
 
 ## Installation
 
 ### Swift Package Manager
 
-Add the following dependency to your `Package.swift`:
+Add the package to your `Package.swift`, then add its `genetic-solver` product to each target that uses it:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/Kosikowski/genetic-solver.git", from: "1.0.0")
+    .package(url: "https://github.com/Kosikowski/genetic-solver.git", from: "0.2.0"),
+],
+targets: [
+    .target(
+        name: "MyTarget",
+        dependencies: [.product(name: "genetic-solver", package: "genetic-solver")]
+    ),
 ]
 ```
 
+The API described in this README needs version 0.2.0 or later; [CHANGELOG.md](CHANGELOG.md) lists what changed since 0.1.0 and what to update when upgrading. If 0.2.0 hasn't been released yet, depend on the main branch instead: `.package(url: "https://github.com/Kosikowski/genetic-solver.git", branch: "main")`.
+
 Or add it to your Xcode project:
 1. File → Add Package Dependencies
-2. Enter the repository URL
+2. Enter `https://github.com/Kosikowski/genetic-solver.git`
 3. Select the version you want to use
+
+### Importing
+
+The package name contains a hyphen, so the module is called `genetic_solver`:
+
+```swift
+import genetic_solver
+```
 
 ## Quick Start
 
 ### 1. Define Your Individual
 
-First, create a type that represents an individual in your genetic algorithm:
+First, create a type that represents an individual in your genetic algorithm. `GeneticElement` includes `FitnessEvaluatable`, so all it needs is a `fitness()` method that returns a `Comparable` value, where higher is better:
 
 ```swift
-struct MyIndividual: GeneticElement, FitnessEvaluatable {
+import genetic_solver
+
+struct MyIndividual: GeneticElement {
     var genes: [Int]
 
     func fitness() -> Double {
@@ -67,21 +93,20 @@ struct MyIndividual: GeneticElement, FitnessEvaluatable {
 }
 ```
 
+The solver calls `fitness()` once for each new individual and keeps the result with it, as an `EvaluatedElement` with an `element` and its `fitness`. The selection and replacement operators, the termination check and `bestElement` all receive these, so they read `fitness` instead of calling `fitness()` again. A fitness function can therefore be expensive, but it should depend only on the individual, because the result is kept for as long as the individual is in the population. If it returns NaN, the built-in tournament selection, elitism and `bestElement` rank that individual below every other one.
+
 ### 2. Implement Genetic Operators
 
 You can implement operators individually or create a `GeneticOperators` conforming type:
 
 #### Option A: Individual Operators
 
+Each operator is a closure. Selection uses the library's tournament selection; [Roulette Wheel Selection](#roulette-wheel-selection) shows how to write your own:
+
 ```swift
-// Selection: Tournament selection
-let selection: SelectionOperator<MyIndividual> = { population in
-    func selectOne() -> MyIndividual {
-        let candidates = (0..<3).map { _ in population.randomElement()! }
-        return candidates.max { $0.fitness() < $1.fitness() }!
-    }
-    return (selectOne(), selectOne())
-}
+// Selection: Tournament selection (each parent is the fittest of 3 individuals
+// drawn at random). It also takes a tournament size and a random number generator.
+let selection: SelectionOperator<MyIndividual> = GeneticSolver.tournamentSelection()
 
 // Crossover: One-point crossover
 let crossover: CrossoverOperator<MyIndividual> = { parent1, parent2 in
@@ -104,18 +129,19 @@ let mutation: MutationOperator<MyIndividual> = { individual in
 }
 ```
 
+These constants work as written at the top level of `main.swift`, inside a function, or as instance properties. In the Swift 6 language mode they can't be global or static constants elsewhere, because a closure isn't `Sendable`.
+
 #### Option B: Protocol-Based Approach
+
+Implement the operators your problem needs and `newElement()`. Anything you leave out uses the protocol's default implementation (see [Default Operators](#default-operators)):
 
 ```swift
 struct MyGeneticOperators: GeneticOperators {
     typealias Element = MyIndividual
 
-    static func selectionOperator(population: [Element]) -> (Element, Element) {
-        // Use default tournament selection
-        let candidates = (0..<3).map { _ in population.randomElement()! }
-        let best = candidates.max { $0.fitness() < $1.fitness() }!
-        return (best, best)
-    }
+    // selectionOperator, replacementOperator and fixedGenerationTermination
+    // use the default implementations: tournament selection, generational
+    // replacement, and stopping after a fixed number of generations.
 
     static func crossoverOperator(parent1: Element, parent2: Element) -> [Element] {
         let point = Int.random(in: 0..<parent1.genes.count)
@@ -135,14 +161,6 @@ struct MyGeneticOperators: GeneticOperators {
         return mutant
     }
 
-    static func replacementOperator(old: [Element], new: [Element]) -> [Element] {
-        return new // Generational replacement
-    }
-
-    static func fixedGenerationTermination(maxGenerations: Int) -> TerminationCheck<Element> {
-        return { generation, _ in generation >= maxGenerations }
-    }
-
     static func newElement() -> Element {
         return MyIndividual(genes: (0..<10).map { _ in Int.random(in: 0...100) })
     }
@@ -153,6 +171,8 @@ struct MyGeneticOperators: GeneticOperators {
 
 #### Using Individual Operators
 
+Each individual has 10 genes from 0 to 100, so the best possible fitness is 1000. This example stops as soon as any individual reaches 950, or after 200 generations, whichever comes first:
+
 ```swift
 var solver = GeneticSolver<MyIndividual>(
     populationSize: 50,
@@ -162,51 +182,52 @@ var solver = GeneticSolver<MyIndividual>(
     crossoverOperator: crossover,
     mutationOperator: mutation,
     replacementOperator: { _, new in new }, // Generational replacement
-    terminationCheck: { generation, population in
-        generation >= 100 || population.allSatisfy { $0.fitness() > 0.95 }
+    terminationCheck: { _, population in
+        // Stop as soon as any individual reaches the target fitness.
+        population.contains { $0.fitness >= 950 }
     },
     newElement: {
         MyIndividual(genes: (0..<10).map { _ in Int.random(in: 0...100) })
     }
 )
 
-let finalPopulation = solver.solve(maxGenerations: 200)
-let bestIndividual = finalPopulation.max { $0.fitness() < $1.fitness() }!
-print("Best fitness: \(bestIndividual.fitness())")
+// Run until the target is reached, or for at most 200 generations.
+solver.solve(maxGenerations: 200)
+print("Best fitness: \(solver.bestElement.fitness)")
 ```
 
 #### Using Protocol-Based Operators
 
+Pass the operators type to the solver. It uses the type's operators and `newElement()`, including any default implementations the type doesn't override:
+
 ```swift
-var solver = GeneticSolver<MyIndividual>(
+var solver = GeneticSolver(
     populationSize: 50,
     crossoverRate: 0.8,
     mutationRate: 0.1,
-    selectionOperator: { MyGeneticOperators.selectionOperator(population: $0) },
-    crossoverOperator: { MyGeneticOperators.crossoverOperator(parent1: $0, parent2: $1) },
-    mutationOperator: { MyGeneticOperators.mutationOperator(element: $0) },
-    replacementOperator: { MyGeneticOperators.replacementOperator(old: $0, new: $1) },
-    terminationCheck: MyGeneticOperators.fixedGenerationTermination(maxGenerations: 100),
-    newElement: { MyGeneticOperators.newElement() }
+    operators: MyGeneticOperators.self,
+    terminationCheck: MyGeneticOperators.fixedGenerationTermination(maxGenerations: 100)
 )
 
-let finalPopulation = solver.solve(maxGenerations: 200)
-let bestIndividual = finalPopulation.max { $0.fitness() < $1.fitness() }!
-print("Best fitness: \(bestIndividual.fitness())")
+// Runs until the termination check stops it at generation 100.
+solver.solve()
+print("Best fitness: \(solver.bestElement.fitness)")
 ```
+
+Each operator can still be replaced afterwards, for example `solver.mutationOperator = { ... }`.
 
 ## Advanced Usage
 
 ### Step-by-Step Execution
 
-The solver now supports incremental execution using the `step()` method:
+`step()` runs one generation and returns `true` once the termination check passes:
 
 ```swift
 var solver = GeneticSolver<MyIndividual>(/* ... */)
 
 // Run one generation at a time
 while !solver.step() {
-    print("Generation \(solver.currentGeneration): Best fitness = \(solver.currentPopulation.map { $0.fitness() }.max()!)")
+    print("Generation \(solver.currentGeneration): Best fitness = \(solver.bestElement.fitness)")
 }
 
 // Access current state
@@ -214,50 +235,132 @@ print("Final generation: \(solver.currentGeneration)")
 print("Population size: \(solver.currentPopulation.count)")
 ```
 
+### Continuing and Restarting
+
+The solver keeps its population and generation count between calls. `solve(maxGenerations:)` continues from wherever `init`, `step()` or an earlier `solve` call left off, and runs until the termination check passes or the total generation count reaches `maxGenerations`. Call `reset()` to start over with a new population:
+
+```swift
+var solver = GeneticSolver<MyIndividual>(/* ... */)
+
+solver.step()                          // Generation 1
+solver.solve(maxGenerations: 50)       // Continues up to generation 50
+solver.solve(maxGenerations: 100)      // Continues up to generation 100
+
+solver.reset()                         // New population, generation 0
+solver.solve(maxGenerations: 100)      // A fresh run
+```
+
 ### Custom Termination Conditions
 
-```swift
-// Stop when fitness improvement stalls
-let adaptiveTermination: TerminationCheck<MyIndividual> = { generation, population in
-    if generation < 10 { return false }
+The solver calls the termination check exactly once for each population: the one created by `init` or `reset()`, and the one produced by each generation. Assigning a new check to `terminationCheck` calls it once for the current population. The latest result is available as `solver.isTerminated`.
 
-    let currentBest = population.map { $0.fitness() }.max()!
-    let previousBest = // ... get from history
+The check runs after each generation, not before the next one. If it depends on something outside the solver, such as a cancel flag or a deadline, call `solver.checkTermination()` after changing that state to apply the change right away. Otherwise the solver sees it only after the next generation, and once the check has stopped the run, the run stays stopped.
 
-    return abs(currentBest - previousBest) < 0.001
-}
-```
-
-### Elitism Replacement
+A check can keep its own state. The solver calls it once for each new population, but it can be called again for a population it has already seen: `checkTermination()` does that, and so does assigning a check, so when a new check wraps the current one (to log it, or to add a condition) the wrapped check sees the current generation twice. A check with state should therefore give the same answer when it is called again for the same generation. This one stops when the best fitness hasn't improved for a number of generations; it remembers the generation of the last improvement instead of counting calls, so repeated calls don't change its answer:
 
 ```swift
-let elitismReplacement: ReplacementOperator<MyIndividual> = { old, new in
-    let eliteCount = 2
-    let sortedOld = old.sorted { $0.fitness() > $1.fitness() }
-    let elite = Array(sortedOld.prefix(eliteCount))
-    let sortedNew = new.sorted { $0.fitness() > $1.fitness() }
-    let rest = Array(sortedNew.prefix(old.count - eliteCount))
-    return elite + rest
+/// Stops when the best fitness hasn't improved for `patience` generations.
+func stallTermination(patience: Int) -> TerminationCheck<MyIndividual> {
+    var bestSoFar = -Double.infinity
+    var lastImprovement = 0 // The generation in which the best fitness last improved
+    return { generation, population in
+        // A new run, for example after `reset()`, starts again at generation 0.
+        if generation == 0 {
+            bestSoFar = -Double.infinity
+            lastImprovement = 0
+        }
+        let currentBest = population.map(\.fitness).max() ?? -Double.infinity
+        if currentBest > bestSoFar {
+            bestSoFar = currentBest
+            lastImprovement = generation
+        }
+        return generation - lastImprovement >= patience
+    }
 }
+
+solver.terminationCheck = stallTermination(patience: 10)
 ```
+
+### Elitism
+
+By default each generation replaces the whole population, so the best individual found so far can be lost in the next generation. With an `eliteCount`, the solver carries that many of the fittest individuals into the next generation unchanged, so the best fitness never gets worse and `solver.bestElement` is always the best individual found so far:
+
+```swift
+var solver = GeneticSolver<MyIndividual>(
+    populationSize: 50,
+    crossoverRate: 0.8,
+    mutationRate: 0.1,
+    eliteCount: 2, // Keep the 2 fittest
+    selectionOperator: selection,
+    crossoverOperator: crossover,
+    mutationOperator: mutation,
+    replacementOperator: { _, new in new },
+    terminationCheck: { _, population in population.contains { $0.fitness >= 950 } },
+    newElement: { MyIndividual(genes: (0..<10).map { _ in Int.random(in: 0...100) }) }
+)
+```
+
+The rest of each generation, `populationSize - eliteCount` individuals, are offspring, so the population size doesn't change. The elite aren't mutated or evaluated again, and they come first among the new individuals that the replacement operator receives. `eliteCount` can also be set on a running solver; it must be less than `populationSize`, so that every generation has at least one new individual.
+
+### Reproducible Runs
+
+By default every random choice uses the system random number generator, so each run is different. To repeat a run exactly, for example to debug it, use a `SeededRandomNumberGenerator` wherever randomness is used: in your operators, in the selection operator, and for the solver's own decisions about when to apply crossover and mutation:
+
+```swift
+var random = SeededRandomNumberGenerator(seed: 42) // For your own operators
+
+var solver = GeneticSolver<MyIndividual>(
+    populationSize: 50,
+    crossoverRate: 0.8,
+    mutationRate: 0.1,
+    selectionOperator: GeneticSolver.tournamentSelection(using: SeededRandomNumberGenerator(seed: 1)),
+    crossoverOperator: { parent1, parent2 in
+        let point = Int.random(in: 0..<parent1.genes.count, using: &random)
+        return [
+            MyIndividual(genes: Array(parent1.genes[..<point]) + Array(parent2.genes[point...])),
+            MyIndividual(genes: Array(parent2.genes[..<point]) + Array(parent1.genes[point...])),
+        ]
+    },
+    mutationOperator: { individual in
+        var mutant = individual
+        mutant.genes[Int.random(in: 0..<mutant.genes.count, using: &random)] = Int.random(in: 0...100, using: &random)
+        return mutant
+    },
+    replacementOperator: { _, new in new },
+    terminationCheck: { _, population in population.contains { $0.fitness >= 950 } },
+    newElement: { MyIndividual(genes: (0..<10).map { _ in Int.random(in: 0...100, using: &random) }) }
+)
+solver.randomNumberGenerator = SeededRandomNumberGenerator(seed: 2) // For the solver's own decisions
+
+solver.solve(maxGenerations: 200) // The same result on every run
+```
+
+`SeededRandomNumberGenerator` produces the same numbers for the same seed on every platform. Numbers the standard library derives from them, like `Int.random(in:using:)`, were identical on Swift 5.9, 6.1 and 6.4, but a future Swift version could change them. `tournamentSelection(tournamentSize:using:)` also lets you choose the tournament size; larger tournaments favor fitter individuals more strongly.
 
 ### Roulette Wheel Selection
 
+Each individual's chance of being picked is proportional to its fitness, so fitness must be finite and not negative. Individuals with fitness 0 are never picked, unless every individual has fitness 0 (as in a knapsack population where every selection is overweight); then parents are picked at random:
+
 ```swift
 let rouletteSelection: SelectionOperator<MyIndividual> = { population in
-    let totalFitness = population.reduce(0) { $0 + $1.fitness() }
+    precondition(population.allSatisfy { $0.fitness >= 0 && $0.fitness.isFinite }, "Roulette wheel selection needs finite, non-negative fitness")
+    let totalFitness = population.reduce(0) { $0 + $1.fitness }
 
-    func selectOne() -> MyIndividual {
+    func selectOne() -> EvaluatedElement<MyIndividual> {
+        // With no positive fitness there is no wheel to spin.
+        guard totalFitness > 0 else { return population.randomElement()! }
+
         let target = Double.random(in: 0..<totalFitness)
         var cumulative = 0.0
-
         for individual in population {
-            cumulative += individual.fitness()
-            if cumulative >= target {
+            cumulative += individual.fitness
+            if cumulative > target {
                 return individual
             }
         }
-        return population.last!
+        // Not reached: the loop adds the same values in the same order as
+        // totalFitness, so the final sum equals totalFitness > target.
+        return population[population.count - 1]
     }
 
     return (selectOne(), selectOne())
@@ -268,27 +371,48 @@ let rouletteSelection: SelectionOperator<MyIndividual> = { population in
 
 ### Core Types
 
-- `GeneticElement`: Protocol for types that can participate in genetic algorithms
+- `GeneticElement`: Protocol for the individuals of a genetic algorithm; it includes `FitnessEvaluatable`
 - `FitnessEvaluatable`: Protocol for types that can be evaluated for fitness
-- `GeneticSolver<Element>`: Main solver class with state tracking
-- `GeneticOperators`: Protocol defining core genetic algorithm operations
+- `EvaluatedElement<Element>`: An individual (`element`) with its `fitness`, evaluated once when the value is created. The population, the selection and replacement operators, the termination check and `bestElement` use it; `EvaluatedElement(_:)` evaluates a new individual
+- `GeneticSolver<Element>`: The solver. It is a struct, so copying it copies its state: population, generation count, termination result and `randomNumberGenerator`. A `SeededRandomNumberGenerator` is copied with its state, so the copy makes the same crossover and mutation decisions; the system generator has no state to copy, and a generator that is a class is shared. The operators are closures, so any state they capture, such as the generator inside `tournamentSelection` or a counter in a termination check, is shared by the copies
+- `GeneticOperators`: Protocol defining core genetic algorithm operations; pass a conforming type to `GeneticSolver(populationSize:crossoverRate:mutationRate:eliteCount:operators:terminationCheck:)`
+
+### Solver State and Methods
+
+- `currentPopulation`: The current population, each individual with its fitness
+- `currentGeneration`: The number of generations run since `init` or the last `reset()`
+- `bestElement`: The fittest individual in the current population, with its fitness (with an `eliteCount` of at least 1, the best found so far)
+- `isTerminated`: The result of the latest termination check
+- `checkTermination()`: Calls the termination check again for the current population and updates `isTerminated`, for checks that depend on state outside the solver
+- `randomNumberGenerator`: The generator for the solver's decisions about applying crossover and mutation (the system generator unless you set one)
+- `step()`: Runs one generation and returns `isTerminated`; does nothing once terminated
+- `solve(maxGenerations:)`: Runs generations until terminated or `currentGeneration` reaches `maxGenerations`, and returns the current population
+- `reset()`: Starts over with a new population at generation 0
+
+### Parameter Rules
+
+`populationSize` must be at least 1, `crossoverRate` and `mutationRate` must be between 0 and 1, and `eliteCount` must be at least 0 and less than `populationSize`; when you don't pass them, the rates are 0.7 and 0.01 and `eliteCount` is 0. The solver checks them in `init` and whenever you set one, and stops the program right there with a message such as `crossoverRate must be between 0 and 1, but is 1.5` when one is out of range. A replacement operator must return at least one individual.
+
+### Random Numbers
+
+- `SeededRandomNumberGenerator`: A random number generator that repeats its sequence for the same seed (SplitMix64; not for cryptography)
 
 ### Operator Types
 
-- `SelectionOperator<Element>`: `([Element]) -> (Element, Element)`
-- `CrossoverOperator<Element>`: `(Element, Element) -> [Element]`
+- `SelectionOperator<Element>`: `([EvaluatedElement<Element>]) -> (EvaluatedElement<Element>, EvaluatedElement<Element>)`. It returns two members of the population
+- `CrossoverOperator<Element>`: `(Element, Element) -> [Element]`. It may return any number of children; if it returns none, the parents are kept
 - `MutationOperator<Element>`: `(Element) -> Element`
-- `ReplacementOperator<Element>`: `([Element], [Element]) -> [Element]`
-- `TerminationCheck<Element>`: `(Int, [Element]) -> Bool`
+- `ReplacementOperator<Element>`: `([EvaluatedElement<Element>], [EvaluatedElement<Element>]) -> [EvaluatedElement<Element>]`
+- `TerminationCheck<Element>`: `(Int, [EvaluatedElement<Element>]) -> Bool`
 
 ### Default Operators
 
 The `GeneticOperators` protocol provides default implementations for all genetic algorithm operations:
 
-- `selectionOperator`: Tournament selection with tournament size of 3
+- `selectionOperator`: Tournament selection with tournament size of 3; `GeneticSolver.tournamentSelection(tournamentSize:using:)` takes another size and a random number generator
 - `crossoverOperator`: Returns parents unchanged (no crossover)
 - `mutationOperator`: Returns element unchanged (no mutation)
-- `replacementOperator`: Generational replacement (replace all)
+- `replacementOperator`: Generational replacement (replace all, so the best individual can be lost unless the solver's `eliteCount` keeps the fittest)
 - `fixedGenerationTermination`: Stop after fixed number of generations
 - `newElement`: Must be implemented by conforming types
 
@@ -296,13 +420,15 @@ The `GeneticOperators` protocol provides default implementations for all genetic
 
 ### Traveling Salesman Problem
 
+A route visits every city once and returns to the start, so it is a permutation of the city indices. Use crossover and mutation operators that keep it a permutation, such as order crossover and swapping two cities; the one-point crossover from the Quick Start would visit some cities twice.
+
 ```swift
 struct City {
     let x: Double, y: Double
 }
 
-struct TSPIndividual: GeneticElement, FitnessEvaluatable {
-    var route: [Int]
+struct TSPIndividual: GeneticElement {
+    var route: [Int] // A permutation of the indices of `cities`
     let cities: [City]
 
     func fitness() -> Double {
@@ -310,10 +436,12 @@ struct TSPIndividual: GeneticElement, FitnessEvaluatable {
         for i in 0..<route.count {
             let current = cities[route[i]]
             let next = cities[route[(i + 1) % route.count]]
-            let distance = sqrt(pow(next.x - current.x, 2) + pow(next.y - current.y, 2))
-            totalDistance += distance
+            let dx = next.x - current.x
+            let dy = next.y - current.y
+            totalDistance += (dx * dx + dy * dy).squareRoot()
         }
-        return 1.0 / totalDistance // Higher fitness = shorter distance
+        // Higher fitness = shorter distance (infinite for a route of length 0)
+        return 1.0 / totalDistance
     }
 }
 ```
@@ -326,7 +454,7 @@ struct Item {
     let value: Int
 }
 
-struct KnapsackIndividual: GeneticElement, FitnessEvaluatable {
+struct KnapsackIndividual: GeneticElement {
     var selection: [Bool]
     let items: [Item]
     let maxWeight: Int
@@ -353,16 +481,58 @@ struct KnapsackIndividual: GeneticElement, FitnessEvaluatable {
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
+### Testing
+
+Run the tests with `swift test`. CI also builds and tests on Linux with the oldest supported Swift version, which can reject code that newer compilers accept. To run those builds locally (requires Docker):
+
+```bash
+./scripts/test-linux.sh          # Swift versions from the Linux CI workflow
+./scripts/test-linux.sh 6.1.2    # A specific version
+```
+
+The package and its tests use the Swift 6 language mode. The tests import the library with `@testable`, which also gives them its internal declarations, so CI also builds and runs a small client that uses only the public API, as other packages do (`Tests/Swift6Client/main.swift`). To run it locally:
+
+```bash
+./scripts/test-swift6-client.sh
+```
+
+Binary frameworks (XCFrameworks) build a library with library evolution and ship a module interface (`.swiftinterface`) that contains its inlinable code, and library evolution limits what that code may do. CI checks that the library builds that way and that its interface compiles. To run the check locally:
+
+```bash
+./scripts/check-library-evolution.sh
+```
+
+To measure how fast the solver runs, build and run the benchmark (`Tests/Benchmark/main.swift`) in release mode. It runs three seeded scenarios, prints the best and median times and the best fitness found, and fails if runs with the same seeds find different results. Compare timings on one machine, and check that a change that should only make the solver faster leaves the best fitness unchanged. CI runs it twice to keep it compiling.
+
+```bash
+./scripts/benchmark.sh       # 5 runs of each scenario
+./scripts/benchmark.sh 10    # 10 runs
+```
+
+To run the tests for an Apple platform the way CI does, with the Xcode selected by `xcode-select`:
+
+```bash
+./scripts/test-apple.sh macOS    # swift test
+./scripts/test-apple.sh iOS      # xcodebuild test on the newest iOS simulator the selected Xcode's SDK supports (also tvOS, watchOS, visionOS)
+```
+
+### Releasing
+
+Before tagging a release, rename the "Unreleased" section of [CHANGELOG.md](CHANGELOG.md) to the new version, and update the version in the installation snippet above if the major or minor version changes.
+
+Release tags are named `v<semantic version>`, for example `v0.2.0` or `v0.3.0-beta.1`. Pushing such a tag starts the Release workflow, which checks the tag name, runs the Apple, Linux and Windows tests, and then publishes a GitHub release with an installation snippet (`from: "0.2.0"`, without the `v`) followed by notes generated from the merged pull requests. Versions with a pre-release part, like `-beta.1`, are published as pre-releases.
+
 ### Code Formatting
 
-This project uses SwiftFormat to maintain consistent code style.
+This project uses SwiftFormat to maintain consistent code style. Different SwiftFormat versions can format the same code differently, so the project pins one version as the SwiftFormat `rev` in `.pre-commit-config.yaml`. The pre-commit hook and CI both use that version, and `./scripts/swiftformat-version.sh` prints it.
 
 #### Local Development
 
-1. Install SwiftFormat:
+1. Install SwiftFormat, ideally the pinned version (`./scripts/format.sh` warns when yours differs):
    ```bash
    brew install swiftformat
    ```
+   Homebrew installs the latest release. To get exactly the pinned version, as CI does, run `./scripts/install-swiftformat.sh <folder>` and use `<folder>/swiftformat` (or put `<folder>` first in your `PATH`).
 
 2. Format code locally:
    ```bash
@@ -374,23 +544,37 @@ This project uses SwiftFormat to maintain consistent code style.
    ./scripts/format.sh --check
    ```
 
+Both run SwiftFormat on one file at a time, through `./scripts/swiftformat-each.sh`, as CI does. SwiftFormat stops any rule that runs longer than a time limit, and when it processes all files at once on a slower machine, such as a CI runner, rules hit that limit although nothing is wrong with the files.
+
 #### Pre-commit Hooks
 
 Install pre-commit hooks to automatically format code before commits:
 
 ```bash
-# Install pre-commit
+# Install pre-commit (3.2.0 or later)
 pip install pre-commit
 
 # Install the git hook scripts
 pre-commit install
 ```
 
+The hook versions, including the SwiftFormat version CI uses, are pinned in `.pre-commit-config.yaml`. Dependabot proposes updates weekly; `pre-commit autoupdate` updates them by hand. If an update changes how SwiftFormat formats code, the SwiftFormat check fails on that pull request until `./scripts/format.sh` is run on its branch.
+
 #### CI/CD
 
 - **Format Check**: Every PR is automatically checked for proper formatting
 - **Auto-Format**: Weekly automated formatting PRs are created if needed
-- **Pre-commit**: Local hooks ensure code is formatted before commits
+- **Pre-commit**: Local hooks ensure code is formatted before commits, and CI runs the same hooks (except SwiftFormat, which has its own check) on every file
+- **Pull requests**: A new push to a pull request cancels the CI runs still going for its earlier pushes
+
+#### Auto-Format Pull Requests
+
+GitHub doesn't start other workflows for pull requests opened with the default `GITHUB_TOKEN`, so CI won't check an auto-format pull request on its own. To have CI run on them, give the Auto Format workflow its own token:
+
+1. Create a [fine-grained personal access token](https://github.com/settings/personal-access-tokens/new) with access to this repository only, and the **Contents** and **Pull requests** permissions set to **Read and write**.
+2. Add it as a repository secret named `AUTO_FORMAT_TOKEN` (Settings → Secrets and variables → Actions).
+
+Without that secret, the workflow uses `GITHUB_TOKEN`, which needs **Allow GitHub Actions to create and approve pull requests** turned on (Settings → Actions → General). The pull request then says that its checks must be started by closing and reopening it.
 
 ## License
 

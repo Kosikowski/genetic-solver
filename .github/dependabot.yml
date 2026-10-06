@@ -7,3 +7,13 @@ updates:
     open-pull-requests-limit: 10
     assignees:
       - "Kosikowski"
+
+  # Keeps the hook versions in .pre-commit-config.yaml current, including the
+  # SwiftFormat version that CI and scripts/format.sh read from it.
+  - package-ecosystem: "pre-commit"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    assignees:
+      - "Kosikowski"
